@@ -35,6 +35,24 @@ services:
       - SPRING_DATASOURCE_USERNAME=${TASK_DB_USER}
       - SPRING_DATASOURCE_PASSWORD=${TASK_DB_PASSWORD}
 
+  diet-service:
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DIET_DB_HOST}:${DIET_DB_PORT}/${DIET_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DIET_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DIET_DB_PASSWORD}
+
+  finance-service:
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${FINANCE_DB_HOST}:${FINANCE_DB_PORT}/${FINANCE_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${FINANCE_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${FINANCE_DB_PASSWORD}
+
   ai-service:
     ports:
       - "8000:8000"

@@ -70,6 +70,22 @@ services:
     networks:
       - planifai-net
 
+  diet-service:
+    build: ./diet/diet-service
+    depends_on:
+      - eureka-server
+      - postgres-task
+    networks:
+      - planifai-net
+
+  finance-service:
+    build: ./finance/finance-service
+    depends_on:
+      - eureka-server
+      - postgres-task
+    networks:
+      - planifai-net
+
   ai-service:
     build: ./ai/ai-service
     networks:
