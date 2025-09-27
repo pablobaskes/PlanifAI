@@ -1,0 +1,16 @@
+# Build artifacts
+target/
+*.jar
+*.war
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Logs and cache
+*.log
+log/
+
+# Environment
+.env
