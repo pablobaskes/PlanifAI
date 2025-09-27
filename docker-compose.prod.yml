@@ -1,0 +1,38 @@
+services:
+  config-server:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+
+  eureka-server:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+
+  api-gateway:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+
+  auth-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${AUTH_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${AUTH_DB_PASSWORD}
+
+  task-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${TASK_DB_HOST}:${TASK_DB_PORT}/${TASK_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${TASK_DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${TASK_DB_PASSWORD}
+
+  ai-service:
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+
+  postgres-auth:
+    environment:
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
+
+  postgres-task:
+    environment:
+      POSTGRES_PASSWORD: ${TASK_DB_PASSWORD}
