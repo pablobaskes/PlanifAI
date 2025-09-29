@@ -35,4 +35,4 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Construir imágenes Docker
-        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml build config-server eureka-server api-gateway
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml build
