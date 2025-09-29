@@ -5,6 +5,8 @@ networks:
 volumes:
   postgres_auth_data:
   postgres_task_data:
+  postgres_diet_data:
+  postgres_finance_data:
   mongo_data:
 
 services:
@@ -55,37 +57,48 @@ services:
   auth-service:
     build: ./auth/auth-service
     depends_on:
-      - eureka-server
-      - postgres-auth
+      eureka-server:
+        condition: service_healthy
+      postgres-auth:
+        condition: service_started
     networks:
       - planifai-net
 
   task-service:
     build: ./tasks/task-service
     depends_on:
-      - eureka-server
-      - postgres-task
+      eureka-server:
+        condition: service_healthy
+      postgres-task:
+        condition: service_started
     networks:
       - planifai-net
 
   diet-service:
     build: ./diet/diet-service
     depends_on:
-      - eureka-server
-      - postgres-task
+      eureka-server:
+        condition: service_healthy
+      postgres-diet:
+        condition: service_started
     networks:
       - planifai-net
 
   finance-service:
     build: ./finance/finance-service
     depends_on:
-      - eureka-server
-      - postgres-task
+      eureka-server:
+        condition: service_healthy
+      postgres-finance:
+        condition: service_started
     networks:
       - planifai-net
 
   ai-service:
     build: ./ai/ai-service
+    depends_on:
+      eureka-server:
+        condition: service_healthy
     networks:
       - planifai-net
 
@@ -110,6 +123,30 @@ services:
       POSTGRES_PASSWORD: ${TASK_DB_PASSWORD}
     volumes:
       - postgres_task_data:/var/lib/postgresql/data
+    networks:
+      - planifai-net
+
+  postgres-diet:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: ${DIET_DB_NAME}
+      POSTGRES_USER: ${DIET_DB_USER}
+      POSTGRES_PASSWORD: ${DIET_DB_PASSWORD}
+    volumes:
+      - postgres_diet_data:/var/lib/postgresql/data
+    networks:
+      - planifai-net
+
+  postgres-finance:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: ${FINANCE_DB_NAME}
+      POSTGRES_USER: ${FINANCE_DB_USER}
+      POSTGRES_PASSWORD: ${FINANCE_DB_PASSWORD}
+    volumes:
+      - postgres_finance_data:/var/lib/postgresql/data
     networks:
       - planifai-net
 

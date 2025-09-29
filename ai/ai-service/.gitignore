@@ -1,0 +1,9 @@
+venv/
+.venv/
+
+__pycache__/
+*.pyc
+
+.idea/  # (Si usas IntelliJ/PyCharm)
+*.log
+*.swp

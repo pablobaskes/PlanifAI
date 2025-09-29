@@ -69,6 +69,14 @@ services:
     ports:
       - "5434:5432"
 
+  postgres-diet:
+    ports:
+      - "5435:5432"
+
+  postgres-finance:
+    ports:
+      - "5436:5432"
+
   redis:
     ports:
       - "6379:6379"

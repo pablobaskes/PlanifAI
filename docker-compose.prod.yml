@@ -50,3 +50,11 @@ services:
   postgres-task:
     environment:
       POSTGRES_PASSWORD: ${TASK_DB_PASSWORD}
+
+  postgres-diet:
+    environment:
+      POSTGRES_PASSWORD: ${DIET_DB_PASSWORD}
+
+  postgres-finance:
+    environment:
+      POSTGRES_PASSWORD: ${FINANCE_DB_PASSWORD}
