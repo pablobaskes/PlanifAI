@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -27,6 +28,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Compilar proyecto
+      - name: Compilar proyecto con Maven
         run: mvn -B clean install
-        
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir imágenes Docker
+        run: docker compose -f docker-compose.yml -f docker-compose.dev.yml build
