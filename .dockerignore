@@ -1,0 +1,32 @@
+# Archivos de compilación
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Archivos de Maven
+.mvn/
+.settings/
+.classpath
+.project
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Git
+.git
+.gitignore
+
+# Archivos temporales / logs
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Archivos del sistema
+ehthumbs.db
+desktop.ini
