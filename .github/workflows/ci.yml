@@ -47,6 +47,6 @@ jobs:
       - name: Crear archivo .env desde secret
         run: echo "${{ secrets.ENV_FILE }}" > .env
       - name: Run Docker Compose
-        run: docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+        run: docker compose --env-file .env -f docker-compose.yml -f docker-compose.dev.yml up -d
       - name: Run smoke test
         run: ./scripts/smoke-test.sh
