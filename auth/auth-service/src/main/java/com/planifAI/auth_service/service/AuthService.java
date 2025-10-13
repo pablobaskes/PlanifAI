@@ -1,6 +1,9 @@
 package com.planifAI.auth_service.service;
 
-
+import com.planifAI.auth_service.dto.LoginRequest;
+import com.planifAI.auth_service.dto.LoginResponse;
+import com.planifAI.auth_service.dto.RegisterRequest;
+import com.planifAI.auth_service.dto.UserDto;
 import com.planifAI.auth_service.model.RefreshToken;
 import com.planifAI.auth_service.model.User;
 import com.planifAI.auth_service.security.JwtTokenProvider;
@@ -10,8 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
-import java.util.UUID;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -23,37 +25,51 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * Registro de usuario (delegado a UserService)
+     * Registro de usuario
      */
     @Transactional
-    public User register(String username, String email, String password) {
-        return userService.registerUser(username, email, password);
+    public UserDto register(RegisterRequest request) {
+        User user = userService.registerUser(
+                request.getUsername(),
+                request.getEmail(),
+                request.getPassword()
+        );
+
+        return new UserDto(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRoles() != null
+                        ? user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toSet())
+                        : Set.of()
+        );
     }
 
     /**
      * Login: valida credenciales, emite JWT y refresh token.
      */
     @Transactional
-    public Map<String, Object> login(String identifier, String password) {
-        User user = userService.findByEmailOrUsername(identifier)
+    public LoginResponse login(LoginRequest request) {
+        User user = userService.findByEmailOrUsername(request.getUsernameOrEmail())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
         }
 
+        // Generar tokens
         String accessToken = jwtTokenProvider.generateAccessToken(user);
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, jwtTokenProvider.getRefreshTokenExpirySeconds());
 
-        return Map.of(
-                "accessToken", accessToken,
-                "refreshToken", refreshToken.getTokenHash(), // raw token se devuelve aquí
-                "expiresIn", jwtTokenProvider.getAccessTokenExpirySeconds()
+        return new LoginResponse(
+                accessToken,
+                refreshToken.getTokenHash(), // aquí puedes devolver el token raw si lo generas así
+                jwtTokenProvider.getAccessTokenExpirySeconds()
         );
     }
 
     /**
-     * Logout (revoca refresh token)
+     * Logout
      */
     @Transactional
     public void logout(String refreshTokenRaw) {
