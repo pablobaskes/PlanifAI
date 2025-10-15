@@ -1,7 +1,9 @@
 package com.planifAI.auth_service.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 
+@AllArgsConstructor
 public class LoginRequest {
 
     @NotBlank(message = "Username or email is required")

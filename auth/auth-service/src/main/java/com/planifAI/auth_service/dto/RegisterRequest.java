@@ -3,7 +3,9 @@ package com.planifAI.auth_service.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 
+@AllArgsConstructor
 public class RegisterRequest {
 
     @NotBlank(message = "Username is required")
