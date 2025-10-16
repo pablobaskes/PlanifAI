@@ -64,7 +64,6 @@ public class AuthIntegrationTest {
         try { jdbcTemplate.execute("TRUNCATE TABLE refresh_tokens CASCADE"); } catch (Exception ignored) {}
         try { jdbcTemplate.execute("TRUNCATE TABLE user_roles CASCADE"); } catch (Exception ignored) {}
         try { jdbcTemplate.execute("TRUNCATE TABLE users CASCADE"); } catch (Exception ignored) {}
-        try { jdbcTemplate.execute("TRUNCATE TABLE roles CASCADE"); } catch (Exception ignored) {}
     }
 
     @Test
