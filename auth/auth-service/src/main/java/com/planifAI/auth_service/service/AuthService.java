@@ -13,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -59,11 +59,11 @@ public class AuthService {
 
         // Generar tokens
         String accessToken = jwtTokenProvider.generateAccessToken(user);
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user, jwtTokenProvider.getRefreshTokenExpirySeconds());
+        String refreshTokenRaw = refreshTokenService.createRefreshToken(user, jwtTokenProvider.getRefreshTokenExpirySeconds());
 
         return new LoginResponse(
                 accessToken,
-                refreshToken.getTokenHash(), // aquí puedes devolver el token raw si lo generas así
+                refreshTokenRaw,
                 jwtTokenProvider.getAccessTokenExpirySeconds()
         );
     }
@@ -72,8 +72,26 @@ public class AuthService {
      * Logout
      */
     @Transactional
-    public void logout(String refreshTokenRaw) {
-        refreshTokenService.validateAndGet(refreshTokenRaw)
+    public void logout(String refreshToken) {
+        refreshTokenService.validateAndGet(refreshToken)
                 .ifPresent(refreshTokenService::revokeToken);
     }
+
+    /**
+     * Refresca el access token y rota el refresh token a partir de un token válido.
+     */
+    @Transactional
+    public Optional<LoginResponse> refreshAccessToken(String refreshTokenRaw) {
+        return refreshTokenService.validateAndRevokeAndGetNew(refreshTokenRaw)
+                .map(newRt -> {
+                    String newAccessToken = jwtTokenProvider.generateAccessToken(newRt.user());
+
+                    return new LoginResponse(
+                            newAccessToken,
+                            newRt.rawToken(),
+                            jwtTokenProvider.getAccessTokenExpirySeconds()
+                    );
+                });
+    }
+
 }
