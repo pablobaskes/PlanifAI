@@ -1,9 +1,10 @@
 package com.planifAI.auth_service.service;
 
+import com.planifAI.auth_service.dto.RefreshTokenWithRawToken;
 import com.planifAI.auth_service.model.RefreshToken;
 import com.planifAI.auth_service.model.User;
 import com.planifAI.auth_service.repository.RefreshTokenRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,17 +17,26 @@ import java.util.Base64;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
     private static final SecureRandom secureRandom = new SecureRandom();
+    private final long refreshTokenExpirySeconds;
+
+    public RefreshTokenService(
+            RefreshTokenRepository refreshTokenRepository,
+            @Value("${jwt.refresh-token-expiration-sec:604800}")
+            long refreshTokenExpirySeconds) {
+
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.refreshTokenExpirySeconds = refreshTokenExpirySeconds;
+    }
 
     /**
      * Crea un nuevo refresh token aleatorio y lo almacena en DB (hash).
      */
     @Transactional
-    public RefreshToken createRefreshToken(User user, long expirySeconds) {
+    public String createRefreshToken(User user, long expirySeconds) {
         // Generar token aleatorio seguro
         byte[] randomBytes = new byte[64];
         secureRandom.nextBytes(randomBytes);
@@ -46,8 +56,7 @@ public class RefreshTokenService {
 
         refreshTokenRepository.save(refreshToken);
 
-        refreshToken.setTokenHash(rawToken);
-        return refreshToken;
+        return rawToken;
     }
 
     /**
@@ -57,6 +66,34 @@ public class RefreshTokenService {
         String tokenHash = hashToken(rawToken);
         return refreshTokenRepository.findByTokenHash(tokenHash)
                 .filter(rt -> !rt.isRevoked() && rt.getExpiresAt().isAfter(Instant.now()));
+    }
+
+    /**
+     * Valida, revoca el token antiguo, crea y guarda uno nuevo, y devuelve el nuevo token.
+     * * @param oldRefreshTokenRaw El Refresh Token original enviado por el cliente.
+     * @return Optional con el nuevo RefreshToken (que contiene el raw token y el usuario).
+     */
+    @Transactional
+    public Optional<RefreshTokenWithRawToken> validateAndRevokeAndGetNew(String oldRefreshTokenRaw) {
+        String tokenHash = hashToken(oldRefreshTokenRaw);
+
+        // 1. Encontrar y validar el token antiguo
+        return refreshTokenRepository.findByTokenHash(tokenHash)
+                .filter(rt -> !rt.isRevoked() && rt.getExpiresAt().isAfter(Instant.now()))
+                .map(oldRt -> {
+                    // 2. Revocar el token antiguo
+                    oldRt.setRevoked(true);
+                    refreshTokenRepository.save(oldRt); // Guardar la revocación
+
+                    // 3. Generar un nuevo Refresh Token (¡rotación!)
+                    User user = oldRt.getUser();
+
+                    // Generar token RAW y guardarlo
+                    String newRawToken = createRefreshToken(user, refreshTokenExpirySeconds);
+
+                    // Creamos un objeto que contenga el User y el nuevo Raw Token
+                    return new RefreshTokenWithRawToken(user, newRawToken);
+                });
     }
 
     /**
