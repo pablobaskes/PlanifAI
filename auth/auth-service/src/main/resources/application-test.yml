@@ -1,11 +1,9 @@
 spring:
-  profiles: test
   datasource:
     driver-class-name: org.postgresql.Driver
-
-spring.cloud:
-  config:
-    enabled: false
+  cloud:
+    config:
+      enabled: false
 
 eureka:
   client:
@@ -16,3 +14,8 @@ logging:
     root: INFO
     org.springframework: WARN
     com.planifAI: DEBUG
+
+app:
+  security:
+    jwt:
+      refresh-token-expiry-seconds: 2592000
