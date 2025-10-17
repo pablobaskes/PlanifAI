@@ -42,13 +42,10 @@ class RefreshTokenServiceTest {
         when(refreshTokenRepository.save(any(RefreshToken.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        RefreshToken token = refreshTokenService.createRefreshToken(testUser, 3600);
+        String token = refreshTokenService.createRefreshToken(testUser, 3600);
 
         assertThat(token).isNotNull();
-        assertThat(token.getUser()).isEqualTo(testUser);
-        assertThat(token.getTokenHash()).isNotBlank(); // raw token returned
-        assertThat(token.getIssuedAt()).isBeforeOrEqualTo(Instant.now());
-        assertThat(token.getExpiresAt()).isAfter(token.getIssuedAt());
+        assertThat(token).isNotBlank();
 
         verify(refreshTokenRepository, times(1)).save(any(RefreshToken.class));
     }

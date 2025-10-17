@@ -118,7 +118,7 @@ class AuthServiceTest {
                 .build();
 
         when(refreshTokenService.createRefreshToken(testUser, 86400L))
-                .thenReturn(refreshToken);
+                .thenReturn(refreshToken.getTokenHash());
 
         LoginResponse response = authService.login(request);
 
