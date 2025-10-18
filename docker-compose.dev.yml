@@ -19,6 +19,7 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
+      JWT_SECRET: ${JWT_SECRET}
 
   auth-service:
     ports:
