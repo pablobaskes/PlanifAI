@@ -6,6 +6,7 @@ services:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
       SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME: ${GIT_CONFIG_USERNAME}
       SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD: ${GIT_CONFIG_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
 
   eureka-server:
     ports:
@@ -18,6 +19,7 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
+      JWT_SECRET: ${JWT_SECRET}
 
   auth-service:
     ports:
@@ -27,6 +29,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}
       SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
 
   task-service:
     ports:
