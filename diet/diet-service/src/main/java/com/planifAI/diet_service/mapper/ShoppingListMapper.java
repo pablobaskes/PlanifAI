@@ -1,6 +1,6 @@
 package com.planifAI.diet_service.mapper;
 
-import com.planifAI.diet_service.dto.ShoppingListDto;
+import com.planifAI.diet_service.dto.ShoppingListDTO;
 import com.planifAI.diet_service.model.ShoppingList;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -11,9 +11,9 @@ import java.util.List;
 public interface ShoppingListMapper {
 
     @Mapping(target = "items", source = "items")
-    ShoppingListDto toDto(ShoppingList list);
+    ShoppingListDTO toDto(ShoppingList list);
 
-    ShoppingList toEntity(ShoppingListDto dto);
+    ShoppingList toEntity(ShoppingListDTO dto);
 
-    List<ShoppingListDto> toDtoList(List<ShoppingList> lists);
+    List<ShoppingListDTO> toDtoList(List<ShoppingList> lists);
 }
