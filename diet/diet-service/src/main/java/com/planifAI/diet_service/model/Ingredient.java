@@ -19,6 +19,9 @@ public class Ingredient {
     private String name;
 
     @Column(nullable = false)
+    private Double quantity;
+
+    @Column(nullable = false)
     private String unit;
 
     @Column(nullable = false)

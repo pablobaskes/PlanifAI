@@ -28,7 +28,7 @@ public class IngredientService {
 
     public List<IngredientDto> getAllIngredients() {
         return ingredientRepository.findAll().stream()
-                .map(i -> new IngredientDto(i.getId(), i.getName(), i.getQuantity(), i.getUnit()))
+                .map(i -> new IngredientDto(i.getId(), i.getName(), i.getQuantity(), i.getUnit(), i.getUserId()))
                 .toList();
     }
 }
