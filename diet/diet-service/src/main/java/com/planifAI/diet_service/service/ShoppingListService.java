@@ -21,9 +21,22 @@ public class ShoppingListService {
         return shoppingListMapper.toDtoList(shoppingListRepository.findAll());
     }
 
+    public ShoppingListDTO findById(UUID id) {
+        return shoppingListRepository.findById(id)
+                .map(shoppingListMapper::toDto)
+                .orElseThrow(() -> new RuntimeException("Ingredient not found"));
+    }
+
     public ShoppingListDTO create(ShoppingListDTO dto) {
         ShoppingList list = shoppingListMapper.toEntity(dto);
         return shoppingListMapper.toDto(shoppingListRepository.save(list));
+    }
+
+    public ShoppingListDTO update(UUID id, ShoppingListDTO dto) {
+        ShoppingList entity = shoppingListRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Ingredient not found"));
+        shoppingListMapper.updateEntityFromDto(dto, entity);
+        return shoppingListMapper.toDto(shoppingListRepository.save(entity));
     }
 
     public void delete(UUID id) {

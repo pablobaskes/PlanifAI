@@ -4,6 +4,7 @@ import com.planifAI.diet_service.dto.ShoppingListDTO;
 import com.planifAI.diet_service.model.ShoppingList;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 import java.util.List;
 
@@ -16,4 +17,7 @@ public interface ShoppingListMapper {
     ShoppingList toEntity(ShoppingListDTO dto);
 
     List<ShoppingListDTO> toDtoList(List<ShoppingList> lists);
+
+    void updateEntityFromDto(ShoppingListDTO dto, @MappingTarget ShoppingList entity);
+
 }

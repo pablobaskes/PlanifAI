@@ -22,7 +22,7 @@ public class Recipe {
     private String instructions;
 
     @ElementCollection
-    private List<String> tags; // saludable, rápida, vegetariana, etc.
+    private List<String> tags;
 
     @ManyToMany
     @JoinTable(
