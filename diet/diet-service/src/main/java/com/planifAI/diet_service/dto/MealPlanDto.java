@@ -12,7 +12,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MealPlanDto {
+public class MealPlanDTO {
     private UUID id;
     private LocalDate date;
     private String mealType;

@@ -12,9 +12,9 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ShoppingListDto {
+public class ShoppingListDTO {
     private UUID id;
     private String name;
     private boolean completed;
-    private List<ShoppingListItemDto> items;
+    private List<ShoppingListItemDTO> items;
 }

@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ShoppingListItemDto {
+public class ShoppingListItemDTO {
     private UUID id;
     private UUID ingredientId;
     private Double quantity;

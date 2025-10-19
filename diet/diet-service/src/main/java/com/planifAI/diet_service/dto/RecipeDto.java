@@ -13,7 +13,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class RecipeDto {
+public class RecipeDTO {
     private UUID id;
     private String name;
     private String instructions;

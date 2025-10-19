@@ -4,12 +4,11 @@ import lombok.*;
 
 import java.util.UUID;
 
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class IngredientDto {
+public class IngredientDTO {
     private UUID id;
     private String name;
     private Double quantity;

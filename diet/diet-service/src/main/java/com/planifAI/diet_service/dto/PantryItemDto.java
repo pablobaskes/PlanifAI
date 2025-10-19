@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PantryItemDto {
+public class PantryItemDTO {
     private UUID id;
     private UUID ingredientId;
     private Double quantity;
