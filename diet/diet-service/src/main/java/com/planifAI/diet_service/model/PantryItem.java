@@ -9,17 +9,17 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Ingredient {
+public class PantryItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+    @ManyToOne(optional = false)
+    private Ingredient ingredient;
 
     @Column(nullable = false)
-    private String unit;
+    private double quantity;
 
     @Column(nullable = false)
     private String userId;

@@ -2,14 +2,14 @@ package com.planifAI.diet_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Ingredient {
+public class ShoppingList {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -18,8 +18,10 @@ public class Ingredient {
     @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
-    private String unit;
+    private boolean completed;
+
+    @OneToMany(mappedBy = "shoppingList", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ShoppingListItem> items = new ArrayList<>();
 
     @Column(nullable = false)
     private String userId;

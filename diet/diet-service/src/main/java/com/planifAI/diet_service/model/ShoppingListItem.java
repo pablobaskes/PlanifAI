@@ -9,17 +9,23 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Ingredient {
+public class ShoppingListItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
-    private String name;
+    @ManyToOne(optional = false)
+    private Ingredient ingredient;
 
     @Column(nullable = false)
-    private String unit;
+    private double quantity;
+
+    private boolean purchased;
+
+    @ManyToOne
+    @JoinColumn(name = "shopping_list_id")
+    private ShoppingList shoppingList;
 
     @Column(nullable = false)
     private String userId;
