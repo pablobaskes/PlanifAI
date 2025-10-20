@@ -22,7 +22,7 @@ public class PantryItemController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PantryItemDTO> findById(@PathVariable UUID id) {
+    public ResponseEntity<PantryItemDTO> findById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(pantryItemService.findById(id));
     }
 
@@ -32,12 +32,12 @@ public class PantryItemController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PantryItemDTO> update(@PathVariable UUID id, @RequestBody PantryItemDTO dto) {
+    public ResponseEntity<PantryItemDTO> update(@PathVariable("id") UUID id, @RequestBody PantryItemDTO dto) {
         return ResponseEntity.ok(pantryItemService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
         pantryItemService.delete(id);
         return ResponseEntity.noContent().build();
     }

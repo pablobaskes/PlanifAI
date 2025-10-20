@@ -22,7 +22,7 @@ public class MealPlanController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<MealPlanDTO> findById(@PathVariable UUID id) {
+    public ResponseEntity<MealPlanDTO> findById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(mealPlanService.findById(id));
     }
 
@@ -32,12 +32,12 @@ public class MealPlanController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<MealPlanDTO> update(@PathVariable UUID id, @RequestBody MealPlanDTO dto) {
+    public ResponseEntity<MealPlanDTO> update(@PathVariable("id") UUID id, @RequestBody MealPlanDTO dto) {
         return ResponseEntity.ok(mealPlanService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
         mealPlanService.delete(id);
         return ResponseEntity.noContent().build();
     }

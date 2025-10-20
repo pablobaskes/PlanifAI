@@ -22,7 +22,7 @@ public class ShoppingListController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ShoppingListDTO> findById(@PathVariable UUID id) {
+    public ResponseEntity<ShoppingListDTO> findById(@PathVariable("id") UUID id) {
         return ResponseEntity.ok(shoppingListService.findById(id));
     }
 
@@ -32,12 +32,12 @@ public class ShoppingListController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<ShoppingListDTO> update(@PathVariable UUID id, @RequestBody ShoppingListDTO dto) {
+    public ResponseEntity<ShoppingListDTO> update(@PathVariable("id") UUID id, @RequestBody ShoppingListDTO dto) {
         return ResponseEntity.ok(shoppingListService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") UUID id) {
         shoppingListService.delete(id);
         return ResponseEntity.noContent().build();
     }
