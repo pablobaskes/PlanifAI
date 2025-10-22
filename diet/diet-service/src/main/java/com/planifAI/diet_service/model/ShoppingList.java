@@ -20,7 +20,11 @@ public class ShoppingList {
 
     private boolean completed;
 
-    @OneToMany(mappedBy = "shoppingList", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "shoppingList",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<ShoppingListItem> items = new ArrayList<>();
 
     @Column(nullable = false)

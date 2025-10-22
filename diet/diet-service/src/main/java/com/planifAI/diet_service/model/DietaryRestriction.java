@@ -2,27 +2,24 @@ package com.planifAI.diet_service.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.UUID;
 
 @Entity
+@Table(name = "dietary_restriction")
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PantryItem {
+@Builder
+public class DietaryRestriction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne(optional = false)
-    private Ingredient ingredient;
+    @Column(nullable = false)
+    private UUID userId;
 
     @Column(nullable = false)
-    private double quantity;
-
-    @Column(nullable = false)
-    private String userId;
-
-    private boolean available;
+    private String restrictionName; // e.g. "Vegan", "Lactose-Free", "Nut Allergy"
 }

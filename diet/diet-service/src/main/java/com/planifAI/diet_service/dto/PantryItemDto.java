@@ -16,4 +16,5 @@ public class PantryItemDTO {
     private UUID ingredientId;
     private Double quantity;
     private boolean available;
+    private String userId;
 }
