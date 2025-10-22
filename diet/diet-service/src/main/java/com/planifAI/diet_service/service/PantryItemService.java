@@ -2,7 +2,6 @@ package com.planifAI.diet_service.service;
 
 import com.planifAI.diet_service.dto.PantryItemDTO;
 import com.planifAI.diet_service.mapper.PantryItemMapper;
-import com.planifAI.diet_service.model.Ingredient;
 import com.planifAI.diet_service.model.PantryItem;
 import com.planifAI.diet_service.repository.PantryItemRepository;
 import lombok.RequiredArgsConstructor;

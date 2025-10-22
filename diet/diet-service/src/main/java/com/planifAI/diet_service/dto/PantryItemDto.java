@@ -13,7 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PantryItemDTO {
     private UUID id;
-    private UUID ingredientId;
+    private UUID foodId;
     private Double quantity;
     private boolean available;
     private String userId;

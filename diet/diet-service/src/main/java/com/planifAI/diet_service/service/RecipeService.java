@@ -1,6 +1,5 @@
 package com.planifAI.diet_service.service;
 
-
 import com.planifAI.diet_service.dto.RecipeDTO;
 import com.planifAI.diet_service.mapper.RecipeMapper;
 import com.planifAI.diet_service.model.Recipe;
@@ -15,32 +14,39 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RecipeService {
 
-    private final RecipeRepository recipeRepository;
-    private final RecipeMapper recipeMapper;
+    private final RecipeRepository recipeDBRepository;
+    private final RecipeMapper recipeDBMapper;
 
     public List<RecipeDTO> findAll() {
-        return recipeMapper.toDtoList(recipeRepository.findAll());
+        return recipeDBMapper.toDtoList(recipeDBRepository.findAll());
     }
 
     public RecipeDTO findById(UUID id) {
-        return recipeRepository.findById(id)
-                .map(recipeMapper::toDto)
+        return recipeDBRepository.findById(id)
+                .map(recipeDBMapper::toDto)
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
     }
 
     public RecipeDTO create(RecipeDTO dto) {
-        Recipe entity = recipeMapper.toEntity(dto);
-        return recipeMapper.toDto(recipeRepository.save(entity));
+        Recipe entity = recipeDBMapper.toEntity(dto);
+        return recipeDBMapper.toDto(recipeDBRepository.save(entity));
     }
 
     public RecipeDTO update(UUID id, RecipeDTO dto) {
-        Recipe entity = recipeRepository.findById(id)
+        Recipe entity = recipeDBRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Recipe not found"));
-        recipeMapper.updateEntityFromDto(dto, entity);
-        return recipeMapper.toDto(recipeRepository.save(entity));
+
+        entity.setName(dto.getName());
+        entity.setPreparationTimeMin(dto.getPreparationTimeMin());
+        entity.setInstructions(dto.getInstructions());
+        entity.setServings(dto.getServings());
+        entity.setMealType(dto.getMealType());
+        entity.setDietaryRestrictions(dto.getDietaryRestrictions());
+
+        return recipeDBMapper.toDto(recipeDBRepository.save(entity));
     }
 
     public void delete(UUID id) {
-        recipeRepository.deleteById(id);
+        recipeDBRepository.deleteById(id);
     }
 }

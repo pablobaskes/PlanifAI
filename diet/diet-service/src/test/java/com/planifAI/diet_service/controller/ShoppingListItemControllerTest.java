@@ -61,12 +61,12 @@ class ShoppingListItemControllerTest {
     @DisplayName("POST /api/diet/shopping-list-items")
     void shouldCreateItem() throws Exception {
         ShoppingListItemDTO dto = new ShoppingListItemDTO();
-        dto.setIngredientId(UUID.randomUUID());
+        dto.setFoodId(UUID.randomUUID());
         dto.setQuantity(7.8);
 
         ShoppingListItemDTO saved = new ShoppingListItemDTO();
         saved.setId(UUID.randomUUID());
-        saved.setIngredientId(dto.getIngredientId());
+        saved.setFoodId(dto.getFoodId());
         saved.setQuantity(dto.getQuantity());
 
         BDDMockito.given(itemService.create(any(ShoppingListItemDTO.class))).willReturn(saved);
@@ -83,12 +83,12 @@ class ShoppingListItemControllerTest {
         UUID id = UUID.randomUUID();
 
         ShoppingListItemDTO dto = new ShoppingListItemDTO();
-        dto.setIngredientId(UUID.randomUUID());
+        dto.setFoodId(UUID.randomUUID());
         dto.setQuantity(8.7);
 
         ShoppingListItemDTO updated = new ShoppingListItemDTO();
         updated.setId(id);
-        updated.setIngredientId(UUID.randomUUID());
+        updated.setFoodId(UUID.randomUUID());
         updated.setQuantity(4.6);
 
         BDDMockito.given(itemService.update(eq(id), any(ShoppingListItemDTO.class))).willReturn(updated);

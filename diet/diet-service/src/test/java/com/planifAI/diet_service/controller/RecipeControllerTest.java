@@ -15,7 +15,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -26,64 +27,70 @@ class RecipeControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private RecipeService recipeService;
+    private RecipeService recipeDBService;
 
     @Autowired
     private ObjectMapper objectMapper;
 
-    private RecipeDTO recipe;
+    private RecipeDTO recipeDBDTO;
+    private UUID id;
 
     @BeforeEach
     void setUp() {
-        recipe = new RecipeDTO();
-        recipe.setId(UUID.randomUUID());
-        recipe.setName("Pasta Carbonara");
-        recipe.setInstructions("Boil pasta, mix with sauce");
+        id = UUID.randomUUID();
+        recipeDBDTO = new RecipeDTO();
+        recipeDBDTO.setId(id);
+        recipeDBDTO.setName("Protein Pancakes");
+        recipeDBDTO.setPreparationTimeMin(15);
+        recipeDBDTO.setInstructions("Mix ingredients and cook.");
+        recipeDBDTO.setServings(2);
+        recipeDBDTO.setMealType("Breakfast");
+        recipeDBDTO.setDietaryRestrictions("High Protein");
     }
 
     @Test
-    void shouldReturnAllRecipes() throws Exception {
-        Mockito.when(recipeService.findAll()).thenReturn(List.of(recipe));
+    void findAll_ShouldReturnListOfRecipes() throws Exception {
+        Mockito.when(recipeDBService.findAll()).thenReturn(List.of(recipeDBDTO));
 
-        mockMvc.perform(get("/api/diet/recipes"))
+        mockMvc.perform(get("/api/diet/recipes-db"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Pasta Carbonara"));
+                .andExpect(jsonPath("$[0].name").value("Protein Pancakes"));
     }
 
     @Test
-    void shouldReturnRecipeById() throws Exception {
-        Mockito.when(recipeService.findById(recipe.getId())).thenReturn(recipe);
+    void findById_ShouldReturnRecipe() throws Exception {
+        Mockito.when(recipeDBService.findById(id)).thenReturn(recipeDBDTO);
 
-        mockMvc.perform(get("/api/diet/recipes/{id}", recipe.getId()))
+        mockMvc.perform(get("/api/diet/recipes-db/{id}", id))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Pasta Carbonara"));
+                .andExpect(jsonPath("$.name").value("Protein Pancakes"));
     }
 
     @Test
-    void shouldCreateRecipe() throws Exception {
-        Mockito.when(recipeService.create(any(RecipeDTO.class))).thenReturn(recipe);
+    void create_ShouldReturnCreatedRecipe() throws Exception {
+        Mockito.when(recipeDBService.create(any(RecipeDTO.class))).thenReturn(recipeDBDTO);
 
-        mockMvc.perform(post("/api/diet/recipes")
+        mockMvc.perform(post("/api/diet/recipes-db")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(recipe)))
+                        .content(objectMapper.writeValueAsString(recipeDBDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Pasta Carbonara"));
+                .andExpect(jsonPath("$.name").value("Protein Pancakes"));
     }
 
     @Test
-    void shouldUpdateRecipe() throws Exception {
-        Mockito.when(recipeService.update(eq(recipe.getId()), any(RecipeDTO.class))).thenReturn(recipe);
+    void update_ShouldReturnUpdatedRecipe() throws Exception {
+        Mockito.when(recipeDBService.update(eq(id), any(RecipeDTO.class))).thenReturn(recipeDBDTO);
 
-        mockMvc.perform(put("/api/diet/recipes/{id}", recipe.getId())
+        mockMvc.perform(put("/api/diet/recipes-db/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(recipe)))
+                        .content(objectMapper.writeValueAsString(recipeDBDTO)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("Pasta Carbonara"));
+                .andExpect(jsonPath("$.name").value("Protein Pancakes"));
     }
 
     @Test
-    void shouldDeleteRecipe() throws Exception {
-        mockMvc.perform(delete("/api/diet/recipes/{id}", recipe.getId()))
+    void delete_ShouldReturnNoContent() throws Exception {
+        mockMvc.perform(delete("/api/diet/recipes-db/{id}", id))
                 .andExpect(status().isNoContent());
     }
 }

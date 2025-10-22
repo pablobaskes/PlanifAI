@@ -37,7 +37,7 @@ class PantryItemControllerTest {
     void setUp() {
         item = new PantryItemDTO();
         item.setId(UUID.randomUUID());
-        item.setIngredientId(UUID.randomUUID());
+        item.setFoodId(UUID.randomUUID());
         item.setQuantity(12.0);
     }
 

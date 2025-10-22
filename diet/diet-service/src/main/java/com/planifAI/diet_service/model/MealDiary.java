@@ -32,4 +32,7 @@ public class MealDiary {
 
     @Column(nullable = false)
     private String mealMacronutrients; // e.g. "P:30g, C:50g, F:10g"
+
+    @ManyToOne(optional = false)
+    private Recipe recipe;
 }

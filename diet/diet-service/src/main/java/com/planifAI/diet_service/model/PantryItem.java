@@ -16,7 +16,7 @@ public class PantryItem {
     private UUID id;
 
     @ManyToOne(optional = false)
-    private Ingredient ingredient;
+    private Food food;
 
     @Column(nullable = false)
     private double quantity;

@@ -20,7 +20,7 @@ public class RecipeFood {
 
     @ManyToOne
     @JoinColumn(name = "recipe_id", nullable = false)
-    private RecipeV2 recipe;
+    private Recipe recipe;
 
     @ManyToOne
     @JoinColumn(name = "food_id", nullable = false)
