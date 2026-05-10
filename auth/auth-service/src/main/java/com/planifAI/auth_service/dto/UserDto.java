@@ -1,24 +1,30 @@
 package com.planifAI.auth_service.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
+
+@NoArgsConstructor
+@AllArgsConstructor
+@Data
 public class UserDto {
     private UUID id;
     private String username;
     private String email;
     private Set<String> roles;
 
-    public UserDto(UUID id, String username, String email, Set<String> roles) {
-        this.id = id;
-        this.username = username;
-        this.email = email;
-        this.roles = roles;
-    }
+    // --- Campos de Perfil Extendidos ---
+    private String nombre;
+    private LocalDate fechaNacimiento;
+    private String genero;
+    private String nivelActividad;
+    private String unidadMedida;
 
-    // Getters
-    public UUID getId() { return id; }
-    public String getUsername() { return username; }
-    public String getEmail() { return email; }
-    public Set<String> getRoles() { return roles; }
+    // --- Campo de Configuración ---
+    private boolean autoUpdatePantry;
 }
