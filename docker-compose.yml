@@ -6,40 +6,10 @@ volumes:
   postgres_auth_data:
 
 services:
-  config-server:
-    build: ./config/config-server
-    networks:
-      - planifai-net
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    restart: on-failure
-
-  eureka-server:
-    build: ./discovery/eureka-server
-    depends_on:
-      config-server:
-        condition: service_healthy
-    networks:
-      - planifai-net
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://eureka-server:8761/actuator/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: on-failure
-
   api-gateway:
     build: ./gateway/api-gateway
-    depends_on:
-      config-server:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - planifai-net
     healthcheck:
@@ -53,8 +23,6 @@ services:
   auth-service:
     build: ./auth/auth-service
     depends_on:
-      eureka-server:
-        condition: service_healthy
       postgres-auth:
         condition: service_started
     networks:

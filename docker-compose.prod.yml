@@ -1,12 +1,4 @@
 services:
-  config-server:
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-
-  eureka-server:
-    environment:
-      SPRING_PROFILES_ACTIVE: prod
-
   api-gateway:
     environment:
       SPRING_PROFILES_ACTIVE: prod

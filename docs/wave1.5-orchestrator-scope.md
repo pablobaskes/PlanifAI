@@ -1,33 +1,40 @@
-# Wave 1.5 Orchestrator Scope
+# Wave 1.5 Runtime Scope
 
-PlanifAI is the Wave 1.5 orchestrator and shared infrastructure repository.
+PlanifAI is now a small local runtime/integration repository, not a full Spring Cloud orchestrator.
 
-## In Scope
+## Active Runtime
+
+- api-gateway
+- auth-service
+- postgres-auth
+- docker compose orchestration
+- shared architecture and run documentation
+
+## External Runtime
+
+- The real `diet-service` lives in `C:\PlanifAI-Project\diet-service`.
+- During local development it is run from IntelliJ or Maven on port `8083`.
+- The gateway reaches it through `host.docker.internal:8083`.
+
+## Lab Artifacts
+
+The previous Spring Cloud infrastructure is preserved under `lab/spring-cloud`:
 
 - config-server
 - eureka-server
-- api-gateway
-- auth-service
-- docker compose orchestration
-- shared infrastructure and configuration documentation
 
-## Removed From This Repository
+Those services are no longer Maven modules and are no longer included in Docker Compose. They remain as learning material and as a record of the architectural experiment.
 
-The following legacy placeholder modules are no longer part of the orchestrator repo:
+## Removed From Active Scope
 
-- diet-service
-- task-service
-- finance-service
-- ai-service
+The following are not part of the active runtime:
 
-Future business-domain services should live in independent repositories. During Wave 1.5, the real diet-service is maintained and run from its separate repository/path, not from this repo.
+- Spring Cloud Config Server
+- Eureka Service Discovery
+- legacy in-repo diet-service placeholder
+- task-service placeholder
+- finance-service placeholder
+- ai-service placeholder
+- MongoDB, Redis, and domain-service Postgres instances not owned by the active runtime
 
-## Runtime Dependencies Kept
-
-- postgres-auth for auth-service persistence
-
-MongoDB, Redis, and domain-service Postgres instances are not part of the orchestrator compose stack unless a future independent service explicitly owns them.
-
-## Local Config Server
-
-For Wave 1.5 local development, Config Server runs with the `dev,native` profiles and reads configuration from the sibling `../PlanifAI-config-repo` folder. Docker Compose mounts that folder at `/config-repo`, so local dev does not require GitHub credentials.
+Future tasks and finance capabilities should be implemented as modules in a small business backend/core service, not as separate microservices by default.

@@ -12,8 +12,6 @@
     <description>Backend multi-módulo para PlanifAI</description>
 
     <modules>
-        <module>config/config-server</module>
-        <module>discovery/eureka-server</module>
         <module>gateway/api-gateway</module>
         <module>auth/auth-service</module>
     </modules>

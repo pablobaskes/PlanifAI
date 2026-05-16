@@ -7,3 +7,4 @@ spring:
             - file:/config-repo/eureka
             - file:/config-repo/gateway
             - file:/config-repo/auth
+            - file:/config-repo/diet

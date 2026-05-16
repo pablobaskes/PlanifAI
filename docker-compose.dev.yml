@@ -1,18 +1,4 @@
 services:
-  config-server:
-    ports:
-      - "8888:8888"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE},native
-    volumes:
-      - ../PlanifAI-config-repo:/config-repo:ro
-
-  eureka-server:
-    ports:
-      - "8761:8761"
-    environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
-
   api-gateway:
     ports:
       - "8080:8080"
