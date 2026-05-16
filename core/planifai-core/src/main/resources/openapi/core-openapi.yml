@@ -1,0 +1,218 @@
+openapi: 3.0.3
+info:
+  title: PlanifAI Core API
+  version: 0.1.0
+  description: Contract-first API for PlanifAI core modules.
+servers:
+  - url: http://localhost:8082
+paths:
+  /api/tasks:
+    get:
+      tags:
+        - Tasks
+      operationId: getTasks
+      summary: List tasks
+      responses:
+        '200':
+          description: Tasks returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskResponse'
+    post:
+      tags:
+        - Tasks
+      operationId: createTask
+      summary: Create task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '201':
+          description: Task created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+  /api/finance/expenses:
+    get:
+      tags:
+        - Finance
+      operationId: getExpenses
+      summary: List expenses
+      responses:
+        '200':
+          description: Expenses returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExpenseResponse'
+    post:
+      tags:
+        - Finance
+      operationId: createExpense
+      summary: Create expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+      responses:
+        '201':
+          description: Expense created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseResponse'
+  /api/finance/incomes:
+    get:
+      tags:
+        - Finance
+      operationId: getIncomes
+      summary: List incomes
+      responses:
+        '200':
+          description: Incomes returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/IncomeResponse'
+    post:
+      tags:
+        - Finance
+      operationId: createIncome
+      summary: Create income
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncomeRequest'
+      responses:
+        '201':
+          description: Income created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncomeResponse'
+components:
+  schemas:
+    TaskStatus:
+      type: string
+      enum: [TODO, IN_PROGRESS, DONE]
+    TaskPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+    TaskRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        dueDate:
+          type: string
+          format: date
+    TaskResponse:
+      allOf:
+        - $ref: '#/components/schemas/TaskRequest'
+        - type: object
+          required: [id, status, priority, createdAt]
+          properties:
+            id:
+              type: integer
+              format: int64
+            createdAt:
+              type: string
+              format: date-time
+    ExpenseCategory:
+      type: string
+      enum: [MORTGAGE, RENTAL_PROPERTY, UTILITIES, GROCERIES, TRANSPORT, HEALTH, LEISURE, TAXES, OTHER]
+    IncomeCategory:
+      type: string
+      enum: [SALARY, RENTAL_INCOME, FREELANCE, INVESTMENT, OTHER]
+    Recurrence:
+      type: string
+      enum: [ONE_OFF, MONTHLY, YEARLY]
+    ExpenseRequest:
+      type: object
+      required: [concept, amount, expenseDate]
+      properties:
+        concept:
+          type: string
+          minLength: 1
+          maxLength: 160
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        expenseDate:
+          type: string
+          format: date
+        category:
+          $ref: '#/components/schemas/ExpenseCategory'
+        recurrence:
+          $ref: '#/components/schemas/Recurrence'
+        notes:
+          type: string
+          maxLength: 1000
+    ExpenseResponse:
+      allOf:
+        - $ref: '#/components/schemas/ExpenseRequest'
+        - type: object
+          required: [id, category, recurrence]
+          properties:
+            id:
+              type: integer
+              format: int64
+    IncomeRequest:
+      type: object
+      required: [source, amount, incomeDate]
+      properties:
+        source:
+          type: string
+          minLength: 1
+          maxLength: 160
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+        incomeDate:
+          type: string
+          format: date
+        category:
+          $ref: '#/components/schemas/IncomeCategory'
+        recurrence:
+          $ref: '#/components/schemas/Recurrence'
+        notes:
+          type: string
+          maxLength: 1000
+    IncomeResponse:
+      allOf:
+        - $ref: '#/components/schemas/IncomeRequest'
+        - type: object
+          required: [id, category, recurrence]
+          properties:
+            id:
+              type: integer
+              format: int64

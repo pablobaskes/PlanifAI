@@ -44,6 +44,9 @@ curl http://localhost:8081/actuator/health
 curl http://localhost:8082/actuator/health
 curl http://localhost:8080/api/tasks/module
 curl http://localhost:8080/api/finance/module
+curl http://localhost:8080/api/tasks
+curl http://localhost:8080/api/finance/expenses
+curl http://localhost:8080/api/finance/incomes
 curl http://localhost:8080/api/v1/foods
 ```
 
@@ -55,6 +58,15 @@ The API Gateway routes:
 - `/api/tasks/**` to `http://planifai-core:8082`
 - `/api/finance/**` to `http://planifai-core:8082`
 - `/api/v1/diets/**`, `/api/v1/foods/**`, `/api/v1/recipes/**`, `/api/v1/inventory/**`, `/api/v1/shopping-lists/**`, and `/api/v1/meal-slots/**` to `http://host.docker.internal:8083`
+
+Current core MVP endpoints:
+
+- `GET /api/tasks`
+- `POST /api/tasks`
+- `GET /api/finance/expenses`
+- `POST /api/finance/expenses`
+- `GET /api/finance/incomes`
+- `POST /api/finance/incomes`
 
 External callers should use the gateway base URL:
 
