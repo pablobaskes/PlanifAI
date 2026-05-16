@@ -27,3 +27,7 @@ Future business-domain services should live in independent repositories. During 
 - postgres-auth for auth-service persistence
 
 MongoDB, Redis, and domain-service Postgres instances are not part of the orchestrator compose stack unless a future independent service explicitly owns them.
+
+## Local Config Server
+
+For Wave 1.5 local development, Config Server runs with the `dev,native` profiles and reads configuration from the sibling `../PlanifAI-config-repo` folder. Docker Compose mounts that folder at `/config-repo`, so local dev does not require GitHub credentials.
