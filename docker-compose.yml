@@ -4,6 +4,7 @@ networks:
 
 volumes:
   postgres_auth_data:
+  postgres_core_data:
 
 services:
   api-gateway:
@@ -25,6 +26,33 @@ services:
     depends_on:
       postgres-auth:
         condition: service_started
+    networks:
+      - planifai-net
+
+  planifai-core:
+    build: ./core/planifai-core
+    depends_on:
+      postgres-core:
+        condition: service_started
+    networks:
+      - planifai-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    restart: on-failure
+
+  postgres-core:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: ${CORE_DB_NAME}
+      POSTGRES_USER: ${CORE_DB_USER}
+      POSTGRES_PASSWORD: ${CORE_DB_PASSWORD}
+    volumes:
+      - postgres_core_data:/var/lib/postgresql/data
     networks:
       - planifai-net
 

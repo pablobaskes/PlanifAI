@@ -13,9 +13,19 @@ spring:
             - Path=/api/auth/**
 
         - id: diet-service
-          uri: http://host.docker.internal:8083
+          uri: ${DIET_SERVICE_URI:http://host.docker.internal:8083}
           predicates:
             - Path=/api/v1/diets,/api/v1/diets/**,/api/v1/meal-slots/**,/api/v1/recipes,/api/v1/recipes/**,/api/v1/foods,/api/v1/foods/**,/api/v1/inventory,/api/v1/inventory/**,/api/v1/shopping-lists/**
+
+        - id: planifai-core-tasks
+          uri: ${PLANIFAI_CORE_URI:http://planifai-core:8082}
+          predicates:
+            - Path=/api/tasks/**
+
+        - id: planifai-core-finance
+          uri: ${PLANIFAI_CORE_URI:http://planifai-core:8082}
+          predicates:
+            - Path=/api/finance/**
 
 jwt:
   secret: ${JWT_SECRET}

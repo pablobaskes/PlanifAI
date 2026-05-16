@@ -26,6 +26,7 @@ Keep:
 
 - API Gateway as the single frontend entrypoint
 - auth-service for JWT/auth learning and current implementation continuity
+- planifai-core for tasks and finance modules
 - external real diet-service
 - Docker Compose for local orchestration
 - PostgreSQL for service persistence

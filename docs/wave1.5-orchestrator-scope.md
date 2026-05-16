@@ -6,7 +6,9 @@ PlanifAI is now a small local runtime/integration repository, not a full Spring 
 
 - api-gateway
 - auth-service
+- planifai-core
 - postgres-auth
+- postgres-core
 - docker compose orchestration
 - shared architecture and run documentation
 
@@ -15,6 +17,7 @@ PlanifAI is now a small local runtime/integration repository, not a full Spring 
 - The real `diet-service` lives in `C:\PlanifAI-Project\diet-service`.
 - During local development it is run from IntelliJ or Maven on port `8083`.
 - The gateway reaches it through `host.docker.internal:8083`.
+- In full-stack Docker mode, Compose builds it from `../diet-service` and the gateway reaches it through `http://diet-service:8083`.
 
 ## Lab Artifacts
 
@@ -37,4 +40,4 @@ The following are not part of the active runtime:
 - ai-service placeholder
 - MongoDB, Redis, and domain-service Postgres instances not owned by the active runtime
 
-Future tasks and finance capabilities should be implemented as modules in a small business backend/core service, not as separate microservices by default.
+Tasks and finance capabilities live as modules inside `planifai-core`, not as separate microservices by default.

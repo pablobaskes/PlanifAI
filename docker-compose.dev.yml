@@ -5,6 +5,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
       JWT_SECRET: ${JWT_SECRET}
+      PLANIFAI_CORE_URI: http://planifai-core:8082
+      DIET_SERVICE_URI: http://host.docker.internal:8083
 
   auth-service:
     ports:
@@ -15,6 +17,19 @@ services:
       SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
       SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+
+  planifai-core:
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${CORE_DB_HOST}:${CORE_DB_PORT}/${CORE_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${CORE_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${CORE_DB_PASSWORD}
+
+  postgres-core:
+    ports:
+      - "5434:5432"
 
   postgres-auth:
     ports:
