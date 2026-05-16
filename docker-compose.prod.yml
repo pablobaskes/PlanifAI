@@ -1,60 +1,23 @@
 services:
   config-server:
     environment:
-      - SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: prod
 
   eureka-server:
     environment:
-      - SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: prod
 
   api-gateway:
     environment:
-      - SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: prod
 
   auth-service:
     environment:
-      - SPRING_PROFILES_ACTIVE: prod
-      - SPRING_DATASOURCE_URL: jdbc:postgresql://${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}
-      - SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
-
-  task-service:
-    environment:
-      - SPRING_PROFILES_ACTIVE: prod
-      - SPRING_DATASOURCE_URL: jdbc:postgresql://${TASK_DB_HOST}:${TASK_DB_PORT}/${TASK_DB_NAME}
-      - SPRING_DATASOURCE_USERNAME: ${TASK_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD: ${TASK_DB_PASSWORD}
-
-  diet-service:
-    environment:
-      - SPRING_PROFILES_ACTIVE: prod
-      - SPRING_DATASOURCE_URL: jdbc:postgresql://${DIET_DB_HOST}:${DIET_DB_PORT}/${DIET_DB_NAME}
-      - SPRING_DATASOURCE_USERNAME: ${DIET_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD: ${DIET_DB_PASSWORD}
-
-  finance-service:
-    environment:
-      - SPRING_PROFILES_ACTIVE: prod
-      - SPRING_DATASOURCE_URL: jdbc:postgresql://${FINANCE_DB_HOST}:${FINANCE_DB_PORT}/${FINANCE_DB_NAME}
-      - SPRING_DATASOURCE_USERNAME: ${FINANCE_DB_USER}
-      - SPRING_DATASOURCE_PASSWORD: ${FINANCE_DB_PASSWORD}
-
-  ai-service:
-    environment:
-      - SPRING_PROFILES_ACTIVE: prod
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${AUTH_DB_HOST}:${AUTH_DB_PORT}/${AUTH_DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${AUTH_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${AUTH_DB_PASSWORD}
 
   postgres-auth:
     environment:
       POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD}
-
-  postgres-task:
-    environment:
-      POSTGRES_PASSWORD: ${TASK_DB_PASSWORD}
-
-  postgres-diet:
-    environment:
-      POSTGRES_PASSWORD: ${DIET_DB_PASSWORD}
-
-  postgres-finance:
-    environment:
-      POSTGRES_PASSWORD: ${FINANCE_DB_PASSWORD}

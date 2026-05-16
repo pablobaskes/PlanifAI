@@ -4,10 +4,6 @@ networks:
 
 volumes:
   postgres_auth_data:
-  postgres_task_data:
-  postgres_diet_data:
-  postgres_finance_data:
-  mongo_data:
 
 services:
   config-server:
@@ -64,44 +60,6 @@ services:
     networks:
       - planifai-net
 
-  task-service:
-    build: ./tasks/task-service
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-      postgres-task:
-        condition: service_started
-    networks:
-      - planifai-net
-
-  diet-service:
-    build: ./diet/diet-service
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-      postgres-diet:
-        condition: service_started
-    networks:
-      - planifai-net
-
-  finance-service:
-    build: ./finance/finance-service
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-      postgres-finance:
-        condition: service_started
-    networks:
-      - planifai-net
-
-  ai-service:
-    build: ./ai/ai-service
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-    networks:
-      - planifai-net
-
   postgres-auth:
     image: postgres:15
     restart: always
@@ -114,52 +72,3 @@ services:
     networks:
       - planifai-net
 
-  postgres-task:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: ${TASK_DB_NAME}
-      POSTGRES_USER: ${TASK_DB_USER}
-      POSTGRES_PASSWORD: ${TASK_DB_PASSWORD}
-    volumes:
-      - postgres_task_data:/var/lib/postgresql/data
-    networks:
-      - planifai-net
-
-  postgres-diet:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: ${DIET_DB_NAME}
-      POSTGRES_USER: ${DIET_DB_USER}
-      POSTGRES_PASSWORD: ${DIET_DB_PASSWORD}
-    volumes:
-      - postgres_diet_data:/var/lib/postgresql/data
-    networks:
-      - planifai-net
-
-  postgres-finance:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: ${FINANCE_DB_NAME}
-      POSTGRES_USER: ${FINANCE_DB_USER}
-      POSTGRES_PASSWORD: ${FINANCE_DB_PASSWORD}
-    volumes:
-      - postgres_finance_data:/var/lib/postgresql/data
-    networks:
-      - planifai-net
-
-  redis:
-    image: redis:alpine
-    networks:
-      - planifai-net
-
-  mongodb:
-    image: mongo
-    environment:
-      MONGO_INITDB_DATABASE: ${MONGO_DB}
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - planifai-net

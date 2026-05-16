@@ -15,10 +15,7 @@
         <module>config/config-server</module>
         <module>discovery/eureka-server</module>
         <module>gateway/api-gateway</module>
-        <module>tasks/task-service</module>
         <module>auth/auth-service</module>
-        <module>finance/finance-service</module>
-        <module>diet/diet-service</module>
     </modules>
 
     <properties>

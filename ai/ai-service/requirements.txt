@@ -1,7 +1,0 @@
-fastapi
-uvicorn[standard]
-python-multipart
-transformers
-py_eureka_client
-httpx
-asyncio

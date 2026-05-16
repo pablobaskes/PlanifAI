@@ -10,7 +10,7 @@ spring:
           username: ${SPRING_CLOUD_CONFIG_SERVER_GIT_USERNAME}
           password: ${SPRING_CLOUD_CONFIG_SERVER_GIT_PASSWORD}
           default-label: main
-          search-paths: eureka,gateway,diet,auth,finance,task
+          search-paths: eureka,gateway,auth
 
 server:
   port: 8888

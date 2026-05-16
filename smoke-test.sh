@@ -3,16 +3,13 @@
 set -e
 set -o pipefail
 
-SERVICES=("config-server" "eureka-server" "api-gateway" "auth-service" "task-service" "finance-service" "diet-service")
+SERVICES=("config-server" "eureka-server" "api-gateway" "auth-service")
 
 declare -A PORTS=(
   ["config-server"]=8888
   ["eureka-server"]=8761
   ["api-gateway"]=8080
   ["auth-service"]=8081
-  ["task-service"]=8082
-  ["finance-service"]=8083
-  ["diet-service"]=8084
 )
 
 echo "🚀 Iniciando smoke test..."
