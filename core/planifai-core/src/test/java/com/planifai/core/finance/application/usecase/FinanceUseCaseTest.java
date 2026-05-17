@@ -9,7 +9,10 @@ import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
 import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -20,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FinanceUseCaseTest {
@@ -120,6 +124,180 @@ class FinanceUseCaseTest {
         assertBreakdown(dashboard.expensesByCategory().get(1), ExpenseCategory.OTHER, "50.00", "25.00");
     }
 
+    @Test
+    void createRecurringExpenseStoresValidExpenseWithDefaults() {
+        RecurringExpense request = recurringExpense(
+                null,
+                "Internet",
+                "49.99",
+                ExpenseCategory.UTILITIES,
+                RecurringExpenseRecurrence.MONTHLY,
+                5,
+                LocalDate.of(2026, 1, 1),
+                null,
+                null
+        );
+
+        RecurringExpense created = financeUseCase.createRecurringExpense(request);
+
+        assertEquals(1L, created.getId());
+        assertEquals("Internet", created.getName());
+        assertBigDecimal("49.99", created.getAmount());
+        assertEquals(Boolean.TRUE, created.getActive());
+        assertEquals(ExpenseCategory.UTILITIES, created.getCategory());
+        assertEquals(RecurringExpenseRecurrence.MONTHLY, created.getRecurrence());
+    }
+
+    @Test
+    void createRecurringExpenseRejectsNonPositiveAmount() {
+        RecurringExpense request = recurringExpense(
+                null,
+                "Invalid",
+                "0.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createRecurringExpense(request));
+    }
+
+    @Test
+    void createRecurringExpenseRejectsInvalidPaymentDay() {
+        RecurringExpense request = recurringExpense(
+                null,
+                "Invalid day",
+                "100.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                32,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createRecurringExpense(request));
+    }
+
+    @Test
+    void getMonthlyObligationsSummaryCalculatesTotalsPendingAndRealAvailableMoney() {
+        incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
+        expenseOutputPort.expenses.add(expense("Utilities", "100.00", LocalDate.of(2026, 5, 5), ExpenseCategory.UTILITIES));
+        expenseOutputPort.expenses.add(expense("Groceries", "500.00", LocalDate.of(2026, 5, 8), ExpenseCategory.GROCERIES));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Rent",
+                "1000.00",
+                ExpenseCategory.MORTGAGE,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                2L,
+                "Utilities",
+                "100.00",
+                ExpenseCategory.UTILITIES,
+                RecurringExpenseRecurrence.MONTHLY,
+                5,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        MonthlyObligationsSummary summary = financeUseCase.getMonthlyObligationsSummary(YearMonth.of(2026, 5));
+
+        assertBigDecimal("1100.00", summary.totalRecurringObligations());
+        assertBigDecimal("1000.00", summary.pendingObligations());
+        assertBigDecimal("100.00", summary.paidOrRegisteredObligations());
+        assertBigDecimal("1400.00", summary.realAvailableMoney());
+        assertEquals(2, summary.upcomingPayments().size());
+        assertEquals(ObligationPaymentStatus.PAID_OR_REGISTERED, summary.upcomingPayments().get(0).status());
+        assertEquals(ObligationPaymentStatus.PENDING, summary.upcomingPayments().get(1).status());
+    }
+
+    @Test
+    void getMonthlyObligationsSummaryExcludesInactiveAndOutOfRangeObligations() {
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Active",
+                "100.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                2L,
+                "Inactive",
+                "200.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                null,
+                false
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                3L,
+                "Future",
+                "300.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 6, 1),
+                null,
+                true
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                4L,
+                "Expired",
+                "400.00",
+                ExpenseCategory.OTHER,
+                RecurringExpenseRecurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                LocalDate.of(2026, 4, 30),
+                true
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                5L,
+                "Yearly other month",
+                "500.00",
+                ExpenseCategory.TAXES,
+                RecurringExpenseRecurrence.YEARLY,
+                10,
+                LocalDate.of(2026, 6, 1),
+                null,
+                true
+        ));
+
+        MonthlyObligationsSummary summary = financeUseCase.getMonthlyObligationsSummary(YearMonth.of(2026, 5));
+
+        assertBigDecimal("100.00", summary.totalRecurringObligations());
+        assertBigDecimal("100.00", summary.pendingObligations());
+        assertEquals(1, summary.upcomingPayments().size());
+        assertEquals("Active", summary.upcomingPayments().get(0).name());
+    }
+
+    @Test
+    void getMonthlyObligationsSummaryReturnsSafeValuesForMonthWithoutData() {
+        MonthlyObligationsSummary summary = financeUseCase.getMonthlyObligationsSummary(YearMonth.of(2026, 5));
+
+        assertBigDecimal("0", summary.totalRecurringObligations());
+        assertBigDecimal("0", summary.pendingObligations());
+        assertBigDecimal("0", summary.paidOrRegisteredObligations());
+        assertBigDecimal("0", summary.realAvailableMoney());
+        assertTrue(summary.upcomingPayments().isEmpty());
+    }
+
     private Income income(String amount, LocalDate date) {
         Income income = new Income();
         income.setAmount(new BigDecimal(amount));
@@ -128,11 +306,40 @@ class FinanceUseCaseTest {
     }
 
     private Expense expense(String amount, LocalDate date, ExpenseCategory category) {
+        return expense(null, amount, date, category);
+    }
+
+    private Expense expense(String concept, String amount, LocalDate date, ExpenseCategory category) {
         Expense expense = new Expense();
+        expense.setConcept(concept);
         expense.setAmount(new BigDecimal(amount));
         expense.setExpenseDate(date);
         expense.setCategory(category);
         return expense;
+    }
+
+    private RecurringExpense recurringExpense(
+            Long id,
+            String name,
+            String amount,
+            ExpenseCategory category,
+            RecurringExpenseRecurrence recurrence,
+            Integer paymentDay,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean active
+    ) {
+        RecurringExpense recurringExpense = new RecurringExpense();
+        recurringExpense.setId(id);
+        recurringExpense.setName(name);
+        recurringExpense.setAmount(new BigDecimal(amount));
+        recurringExpense.setCategory(category);
+        recurringExpense.setRecurrence(recurrence);
+        recurringExpense.setPaymentDay(paymentDay);
+        recurringExpense.setStartDate(startDate);
+        recurringExpense.setEndDate(endDate);
+        recurringExpense.setActive(active);
+        return recurringExpense;
     }
 
     private void assertBreakdown(
@@ -201,6 +408,7 @@ class FinanceUseCaseTest {
     private static final class FakeRecurringExpenseOutputPort implements RecurringExpenseOutputPort {
 
         private final List<RecurringExpense> recurringExpenses = new ArrayList<>();
+        private long nextId = 1L;
 
         @Override
         public List<RecurringExpense> findAll() {
@@ -228,6 +436,10 @@ class FinanceUseCaseTest {
 
         @Override
         public RecurringExpense save(RecurringExpense recurringExpense) {
+            if (recurringExpense.getId() == null) {
+                recurringExpense.setId(nextId++);
+            }
+            recurringExpenses.removeIf(savedRecurringExpense -> recurringExpense.getId().equals(savedRecurringExpense.getId()));
             recurringExpenses.add(recurringExpense);
             return recurringExpense;
         }

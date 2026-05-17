@@ -7,7 +7,9 @@ import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
+import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
+import com.planifai.core.dto.Recurrence;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -41,6 +44,68 @@ class FinanceRestAdapterTest {
         assertEquals(100.0, response.getBody().getNetBalance());
         assertEquals(10.0, response.getBody().getSavingsRate());
         assertEquals(FinancialHealthStatus.WARNING, response.getBody().getHealthStatus());
+    }
+
+    @Test
+    void createRecurringExpenseReturnsCreatedResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+        RecurringExpenseRequest request = new RecurringExpenseRequest(
+                "Rent",
+                1000.0,
+                com.planifai.core.dto.ExpenseCategory.MORTGAGE,
+                Recurrence.MONTHLY,
+                10,
+                LocalDate.of(2026, 1, 1),
+                true
+        );
+
+        ResponseEntity<RecurringExpenseResponse> response = adapter.createRecurringExpense(request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals(1L, response.getBody().getId());
+        assertEquals("Rent", response.getBody().getName());
+    }
+
+    @Test
+    void createRecurringExpenseReturnsBadRequestForInvalidRecurrence() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+        RecurringExpenseRequest request = new RecurringExpenseRequest(
+                "Invalid",
+                1000.0,
+                com.planifai.core.dto.ExpenseCategory.OTHER,
+                Recurrence.ONE_OFF,
+                10,
+                LocalDate.of(2026, 1, 1),
+                true
+        );
+
+        ResponseEntity<RecurringExpenseResponse> response = adapter.createRecurringExpense(request);
+
+        assertEquals(400, response.getStatusCode().value());
+    }
+
+    @Test
+    void getMonthlyObligationsSummaryParsesMonthAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<MonthlyObligationsSummaryResponse> response = adapter.getMonthlyObligationsSummary("2026-05");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedMonth);
+        assertEquals("2026-05", response.getBody().getMonth());
+    }
+
+    @Test
+    void getMonthlyObligationsSummaryReturnsBadRequestForInvalidMonth() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<MonthlyObligationsSummaryResponse> response = adapter.getMonthlyObligationsSummary("2026-13");
+
+        assertEquals(400, response.getStatusCode().value());
     }
 
     private static final class FakeFinanceInputPort implements FinanceInputPort {
@@ -101,6 +166,7 @@ class FinanceRestAdapterTest {
 
         @Override
         public RecurringExpense createRecurringExpense(RecurringExpense recurringExpense) {
+            recurringExpense.setId(1L);
             return recurringExpense;
         }
 
