@@ -232,8 +232,7 @@ components:
         savingsRate:
           type: number
           format: double
-          description: Savings percentage over total income. Empty-income months return 0 and healthStatus NO_DATA.
-          minimum: 0
+          description: Savings percentage over total income. Empty-income months return 0 and healthStatus NO_DATA. Negative-balance months may return a negative savings rate.
           maximum: 100
         healthStatus:
           $ref: '#/components/schemas/FinancialHealthStatus'
