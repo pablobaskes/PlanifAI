@@ -127,6 +127,125 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceDashboardResponse'
+  /api/finance/recurring-expenses:
+    get:
+      tags:
+        - Finance
+      operationId: getRecurringExpenses
+      summary: List recurring expenses
+      description: Lists manually managed recurring expenses and financial obligations. This endpoint does not create automatic payments and does not synchronize with banks.
+      responses:
+        '200':
+          description: Recurring expenses returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecurringExpenseResponse'
+        '501':
+          description: Contract defined; runtime implementation is intentionally deferred.
+    post:
+      tags:
+        - Finance
+      operationId: createRecurringExpense
+      summary: Create recurring expense
+      description: Creates a manually tracked recurring expense. No payment is executed and no bank synchronization is triggered.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringExpenseRequest'
+      responses:
+        '201':
+          description: Recurring expense created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringExpenseResponse'
+        '501':
+          description: Contract defined; runtime implementation is intentionally deferred.
+  /api/finance/recurring-expenses/{id}:
+    put:
+      tags:
+        - Finance
+      operationId: updateRecurringExpense
+      summary: Update recurring expense
+      description: Updates a manually tracked recurring expense. No payment is executed and no bank synchronization is triggered.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recurring expense identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringExpenseRequest'
+      responses:
+        '200':
+          description: Recurring expense updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecurringExpenseResponse'
+        '404':
+          description: Recurring expense not found.
+        '501':
+          description: Contract defined; runtime implementation is intentionally deferred.
+    delete:
+      tags:
+        - Finance
+      operationId: deleteRecurringExpense
+      summary: Delete recurring expense
+      description: Deletes a manually tracked recurring expense from PlanifAI. This does not cancel external subscriptions, execute payments, or synchronize with banks.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Recurring expense identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Recurring expense deleted.
+        '404':
+          description: Recurring expense not found.
+        '501':
+          description: Contract defined; runtime implementation is intentionally deferred.
+  /api/finance/obligations/monthly-summary:
+    get:
+      tags:
+        - Finance
+      operationId: getMonthlyObligationsSummary
+      summary: Get monthly obligations summary
+      description: Projects manually tracked recurring obligations for a month. The projection is informational only; PlanifAI does not execute payments and does not synchronize with bank accounts.
+      parameters:
+        - name: month
+          in: query
+          required: true
+          description: Month to project using YYYY-MM format.
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-05'
+      responses:
+        '200':
+          description: Monthly obligations summary returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MonthlyObligationsSummaryResponse'
+        '501':
+          description: Contract defined; runtime implementation is intentionally deferred.
 components:
   schemas:
     TaskStatus:
@@ -174,6 +293,10 @@ components:
     Recurrence:
       type: string
       enum: [ONE_OFF, MONTHLY, YEARLY]
+    ObligationPaymentStatus:
+      type: string
+      description: Manual projection status for an upcoming obligation. PAID_OR_REGISTERED means the user has registered or marked the obligation, not that PlanifAI executed a payment.
+      enum: [PENDING, PAID_OR_REGISTERED]
     FinancialHealthStatus:
       type: string
       enum: [GOOD, WARNING, BAD, NO_DATA]
@@ -241,6 +364,126 @@ components:
           description: Expense totals grouped by category. Empty months return an empty array.
           items:
             $ref: '#/components/schemas/ExpenseCategoryBreakdown'
+    RecurringExpenseRequest:
+      type: object
+      description: Manually managed recurring expense or financial obligation. This DTO never represents an automatic payment instruction or bank synchronization mandate.
+      required: [name, amount, category, recurrence, paymentDay, startDate, active]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: Human-readable obligation name, such as mortgage, rent, utility bill, insurance, or subscription.
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Expected recurring amount for projection and planning only.
+        category:
+          $ref: '#/components/schemas/ExpenseCategory'
+        recurrence:
+          $ref: '#/components/schemas/Recurrence'
+        paymentDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Preferred day of month used to project the obligation. Months with fewer days should use the last valid day for projection.
+        startDate:
+          type: string
+          format: date
+          description: Date from which the obligation starts being considered.
+        endDate:
+          type: string
+          format: date
+          description: Optional date after which the obligation should no longer be considered.
+        active:
+          type: boolean
+          description: Whether this obligation is currently considered in monthly projections.
+        notes:
+          type: string
+          maxLength: 1000
+          description: Optional user notes. Notes must not be interpreted as payment authorization.
+    RecurringExpenseResponse:
+      allOf:
+        - $ref: '#/components/schemas/RecurringExpenseRequest'
+        - type: object
+          required: [id]
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Recurring expense identifier.
+    UpcomingPaymentItem:
+      type: object
+      description: Informational projection of a manually tracked obligation for the selected month. This item is not an automatic payment and does not imply bank synchronization.
+      required: [recurringExpenseId, name, amount, category, dueDate, paymentDay, status]
+      properties:
+        recurringExpenseId:
+          type: integer
+          format: int64
+          description: Source recurring expense identifier.
+        name:
+          type: string
+          description: Projected payment name.
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          description: Projected amount for this month.
+        category:
+          $ref: '#/components/schemas/ExpenseCategory'
+        dueDate:
+          type: string
+          format: date
+          description: Projected due date within the selected month.
+        paymentDay:
+          type: integer
+          minimum: 1
+          maximum: 31
+          description: Configured payment day from the recurring expense.
+        status:
+          $ref: '#/components/schemas/ObligationPaymentStatus'
+    MonthlyObligationsSummaryResponse:
+      type: object
+      description: Monthly projection of manually tracked recurring obligations. It is informational and does not execute payments or synchronize bank data.
+      required:
+        - month
+        - totalRecurringObligations
+        - pendingObligations
+        - paidOrRegisteredObligations
+        - realAvailableMoney
+        - upcomingPayments
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Month summarized using YYYY-MM format.
+          example: '2026-05'
+        totalRecurringObligations:
+          type: number
+          format: double
+          minimum: 0
+          description: Total projected obligations for the selected month.
+        pendingObligations:
+          type: number
+          format: double
+          minimum: 0
+          description: Projected obligations not yet marked as paid or registered.
+        paidOrRegisteredObligations:
+          type: number
+          format: double
+          minimum: 0
+          description: Projected obligations manually marked as paid or already registered as expenses.
+        realAvailableMoney:
+          type: number
+          format: double
+          description: Estimated money available after considering projected recurring obligations. It is planning information only.
+        upcomingPayments:
+          type: array
+          description: Informational upcoming projected payments for the selected month. Empty months return an empty array.
+          items:
+            $ref: '#/components/schemas/UpcomingPaymentItem'
     ExpenseRequest:
       type: object
       required: [concept, amount, expenseDate]

@@ -6,6 +6,9 @@ import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
+import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
+import com.planifai.core.dto.RecurringExpenseRequest;
+import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Expense;
@@ -55,5 +58,30 @@ public class FinanceRestAdapter implements FinanceApi {
     public ResponseEntity<FinanceDashboardResponse> getFinanceDashboard(String month) {
         FinanceDashboard dashboard = financeInputPort.getDashboard(YearMonth.parse(month));
         return ResponseEntity.ok(financeRestMapper.toResponse(dashboard));
+    }
+
+    @Override
+    public ResponseEntity<List<RecurringExpenseResponse>> getRecurringExpenses() {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public ResponseEntity<RecurringExpenseResponse> createRecurringExpense(RecurringExpenseRequest recurringExpenseRequest) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public ResponseEntity<RecurringExpenseResponse> updateRecurringExpense(Long id, RecurringExpenseRequest recurringExpenseRequest) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteRecurringExpense(Long id) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public ResponseEntity<MonthlyObligationsSummaryResponse> getMonthlyObligationsSummary(String month) {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 }
