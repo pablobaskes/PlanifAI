@@ -108,6 +108,12 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<MonthlyObligationsSummaryResponse> getMonthlyObligationsSummary(String month) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        try {
+            return ResponseEntity.ok(financeRestMapper.toResponse(
+                    financeInputPort.getMonthlyObligationsSummary(YearMonth.parse(month))
+            ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 }

@@ -143,8 +143,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/RecurringExpenseResponse'
-        '501':
-          description: Contract defined; runtime implementation is intentionally deferred.
     post:
       tags:
         - Finance
@@ -164,8 +162,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RecurringExpenseResponse'
-        '501':
-          description: Contract defined; runtime implementation is intentionally deferred.
   /api/finance/recurring-expenses/{id}:
     put:
       tags:
@@ -197,8 +193,6 @@ paths:
                 $ref: '#/components/schemas/RecurringExpenseResponse'
         '404':
           description: Recurring expense not found.
-        '501':
-          description: Contract defined; runtime implementation is intentionally deferred.
     delete:
       tags:
         - Finance
@@ -219,8 +213,6 @@ paths:
           description: Recurring expense deleted.
         '404':
           description: Recurring expense not found.
-        '501':
-          description: Contract defined; runtime implementation is intentionally deferred.
   /api/finance/obligations/monthly-summary:
     get:
       tags:
@@ -244,8 +236,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MonthlyObligationsSummaryResponse'
-        '501':
-          description: Contract defined; runtime implementation is intentionally deferred.
 components:
   schemas:
     TaskStatus:

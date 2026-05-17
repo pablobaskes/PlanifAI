@@ -12,8 +12,12 @@ import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.IncomeCategory;
+import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
 import com.planifai.core.finance.domain.model.Recurrence;
 import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -105,6 +109,48 @@ public class FinanceUseCase implements FinanceInputPort {
                 savingsRate,
                 healthStatus,
                 buildExpenseBreakdown(expenses, totalExpenses)
+        );
+    }
+
+    @Override
+    public MonthlyObligationsSummary getMonthlyObligationsSummary(YearMonth month) {
+        if (month == null) {
+            throw new IllegalArgumentException("Obligations summary month is required.");
+        }
+
+        LocalDate periodStart = month.atDay(1);
+        LocalDate periodEnd = month.atEndOfMonth();
+        List<Income> incomes = incomeOutputPort.findByIncomeDateBetween(periodStart, periodEnd);
+        List<Expense> expenses = expenseOutputPort.findByExpenseDateBetween(periodStart, periodEnd);
+        List<RecurringExpense> applicableRecurringExpenses = recurringExpenseOutputPort
+                .findActiveWithinPeriod(periodStart, periodEnd).stream()
+                .filter(recurringExpense -> appliesToMonth(recurringExpense, month))
+                .toList();
+
+        List<UpcomingPayment> upcomingPayments = applicableRecurringExpenses.stream()
+                .map(recurringExpense -> toUpcomingPayment(recurringExpense, month, expenses))
+                .sorted(Comparator
+                        .comparing(UpcomingPayment::dueDate)
+                        .thenComparing(UpcomingPayment::name)
+                        .thenComparing(UpcomingPayment::recurringExpenseId))
+                .toList();
+
+        BigDecimal totalRecurringObligations = sumUpcomingPayments(upcomingPayments);
+        BigDecimal pendingObligations = sumUpcomingPaymentsByStatus(upcomingPayments, ObligationPaymentStatus.PENDING);
+        BigDecimal paidOrRegisteredObligations = sumUpcomingPaymentsByStatus(
+                upcomingPayments,
+                ObligationPaymentStatus.PAID_OR_REGISTERED
+        );
+        BigDecimal currentBalance = sumIncomes(incomes).subtract(sumExpenses(expenses));
+        BigDecimal realAvailableMoney = currentBalance.subtract(pendingObligations);
+
+        return new MonthlyObligationsSummary(
+                month,
+                totalRecurringObligations,
+                pendingObligations,
+                paidOrRegisteredObligations,
+                realAvailableMoney,
+                upcomingPayments
         );
     }
 
@@ -205,6 +251,97 @@ public class FinanceUseCase implements FinanceInputPort {
                 && recurringExpense.getEndDate().isBefore(recurringExpense.getStartDate())) {
             throw new IllegalArgumentException("Recurring expense end date cannot be before start date.");
         }
+    }
+
+    private boolean appliesToMonth(RecurringExpense recurringExpense, YearMonth month) {
+        if (recurringExpense == null
+                || !Boolean.TRUE.equals(recurringExpense.getActive())
+                || recurringExpense.getStartDate() == null
+                || recurringExpense.getPaymentDay() == null
+                || recurringExpense.getPaymentDay() < 1
+                || recurringExpense.getPaymentDay() > 31
+                || recurringExpense.getRecurrence() == null) {
+            return false;
+        }
+
+        LocalDate dueDate = projectedDueDate(recurringExpense, month);
+        if (dueDate.isBefore(recurringExpense.getStartDate())) {
+            return false;
+        }
+        if (recurringExpense.getEndDate() != null && dueDate.isAfter(recurringExpense.getEndDate())) {
+            return false;
+        }
+        if (recurringExpense.getRecurrence() == RecurringExpenseRecurrence.YEARLY) {
+            return month.getMonthValue() == recurringExpense.getStartDate().getMonthValue();
+        }
+        return recurringExpense.getRecurrence() == RecurringExpenseRecurrence.MONTHLY;
+    }
+
+    private UpcomingPayment toUpcomingPayment(
+            RecurringExpense recurringExpense,
+            YearMonth month,
+            List<Expense> registeredExpenses
+    ) {
+        ObligationPaymentStatus status = isRegisteredExpensePresent(recurringExpense, registeredExpenses)
+                ? ObligationPaymentStatus.PAID_OR_REGISTERED
+                : ObligationPaymentStatus.PENDING;
+
+        return new UpcomingPayment(
+                recurringExpense.getId(),
+                recurringExpense.getName(),
+                recurringExpense.getAmount(),
+                recurringExpense.getCategory(),
+                projectedDueDate(recurringExpense, month),
+                recurringExpense.getPaymentDay(),
+                status
+        );
+    }
+
+    private LocalDate projectedDueDate(RecurringExpense recurringExpense, YearMonth month) {
+        int paymentDay = Math.min(recurringExpense.getPaymentDay(), month.lengthOfMonth());
+        return month.atDay(paymentDay);
+    }
+
+    private boolean isRegisteredExpensePresent(RecurringExpense recurringExpense, List<Expense> registeredExpenses) {
+        return registeredExpenses.stream()
+                .anyMatch(expense -> matchesRecurringExpense(expense, recurringExpense));
+    }
+
+    private boolean matchesRecurringExpense(Expense expense, RecurringExpense recurringExpense) {
+        if (expense == null || recurringExpense == null) {
+            return false;
+        }
+        if (!sameText(expense.getConcept(), recurringExpense.getName())) {
+            return false;
+        }
+        if (expense.getCategory() != recurringExpense.getCategory()) {
+            return false;
+        }
+        return expense.getAmount() != null
+                && recurringExpense.getAmount() != null
+                && expense.getAmount().compareTo(recurringExpense.getAmount()) == 0;
+    }
+
+    private boolean sameText(String first, String second) {
+        return first != null && second != null && first.trim().equalsIgnoreCase(second.trim());
+    }
+
+    private BigDecimal sumUpcomingPayments(List<UpcomingPayment> upcomingPayments) {
+        return upcomingPayments.stream()
+                .map(UpcomingPayment::amount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumUpcomingPaymentsByStatus(
+            List<UpcomingPayment> upcomingPayments,
+            ObligationPaymentStatus status
+    ) {
+        return upcomingPayments.stream()
+                .filter(upcomingPayment -> upcomingPayment.status() == status)
+                .map(UpcomingPayment::amount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void validateAmount(BigDecimal amount, String message) {

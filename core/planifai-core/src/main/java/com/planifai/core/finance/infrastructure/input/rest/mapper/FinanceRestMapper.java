@@ -6,13 +6,17 @@ import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
+import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
 import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
+import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -69,6 +73,29 @@ public interface FinanceRestMapper {
     }
 
     List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses);
+
+    default MonthlyObligationsSummaryResponse toResponse(MonthlyObligationsSummary summary) {
+        return new MonthlyObligationsSummaryResponse()
+                .month(summary.month().toString())
+                .totalRecurringObligations(toDouble(summary.totalRecurringObligations()))
+                .pendingObligations(toDouble(summary.pendingObligations()))
+                .paidOrRegisteredObligations(toDouble(summary.paidOrRegisteredObligations()))
+                .realAvailableMoney(toDouble(summary.realAvailableMoney()))
+                .upcomingPayments(summary.upcomingPayments().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default UpcomingPaymentItem toResponse(UpcomingPayment upcomingPayment) {
+        return new UpcomingPaymentItem()
+                .recurringExpenseId(upcomingPayment.recurringExpenseId())
+                .name(upcomingPayment.name())
+                .amount(toDouble(upcomingPayment.amount()))
+                .category(toResponse(upcomingPayment.category()))
+                .dueDate(upcomingPayment.dueDate())
+                .paymentDay(upcomingPayment.paymentDay())
+                .status(com.planifai.core.dto.ObligationPaymentStatus.valueOf(upcomingPayment.status().name()));
+    }
 
     default FinanceDashboardResponse toResponse(FinanceDashboard dashboard) {
         return new FinanceDashboardResponse()
