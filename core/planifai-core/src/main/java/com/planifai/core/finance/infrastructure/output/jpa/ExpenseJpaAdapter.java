@@ -7,6 +7,7 @@ import com.planifai.core.finance.infrastructure.output.jpa.mapper.ExpenseJpaMapp
 import com.planifai.core.finance.infrastructure.output.jpa.repository.ExpenseJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
@@ -23,6 +24,11 @@ public class ExpenseJpaAdapter implements ExpenseOutputPort {
     @Override
     public List<Expense> findAll() {
         return expenseJpaMapper.toDomain(expenseJpaRepository.findAll());
+    }
+
+    @Override
+    public List<Expense> findByExpenseDateBetween(LocalDate from, LocalDate to) {
+        return expenseJpaMapper.toDomain(expenseJpaRepository.findByExpenseDateBetween(from, to));
     }
 
     @Override

@@ -7,6 +7,7 @@ import com.planifai.core.finance.infrastructure.output.jpa.mapper.IncomeJpaMappe
 import com.planifai.core.finance.infrastructure.output.jpa.repository.IncomeJpaRepository;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Component
@@ -23,6 +24,11 @@ public class IncomeJpaAdapter implements IncomeOutputPort {
     @Override
     public List<Income> findAll() {
         return incomeJpaMapper.toDomain(incomeJpaRepository.findAll());
+    }
+
+    @Override
+    public List<Income> findByIncomeDateBetween(LocalDate from, LocalDate to) {
+        return incomeJpaMapper.toDomain(incomeJpaRepository.findByIncomeDateBetween(from, to));
     }
 
     @Override

@@ -24,6 +24,8 @@ spring:
             exposedHeaders:
               - Authorization
             allowCredentials: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Expose-Headers RETAIN_FIRST
       routes:
         - id: auth-service
           uri: http://auth-service:8081
