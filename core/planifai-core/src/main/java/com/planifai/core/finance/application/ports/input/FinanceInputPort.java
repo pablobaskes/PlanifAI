@@ -3,6 +3,7 @@ package com.planifai.core.finance.application.ports.input;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.RecurringExpense;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -18,4 +19,12 @@ public interface FinanceInputPort {
     Income createIncome(Income income);
 
     FinanceDashboard getDashboard(YearMonth month);
+
+    List<RecurringExpense> getRecurringExpenses();
+
+    RecurringExpense createRecurringExpense(RecurringExpense recurringExpense);
+
+    RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense);
+
+    void deleteRecurringExpense(Long id);
 }

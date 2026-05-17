@@ -9,10 +9,12 @@ import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
 import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
+import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -62,22 +64,46 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<List<RecurringExpenseResponse>> getRecurringExpenses() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        return ResponseEntity.ok(financeRestMapper.toRecurringExpenseResponse(financeInputPort.getRecurringExpenses()));
     }
 
     @Override
     public ResponseEntity<RecurringExpenseResponse> createRecurringExpense(RecurringExpenseRequest recurringExpenseRequest) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        try {
+            RecurringExpense createdRecurringExpense = financeInputPort.createRecurringExpense(
+                    financeRestMapper.toDomain(recurringExpenseRequest)
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdRecurringExpense));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
     public ResponseEntity<RecurringExpenseResponse> updateRecurringExpense(Long id, RecurringExpenseRequest recurringExpenseRequest) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        try {
+            RecurringExpense updatedRecurringExpense = financeInputPort.updateRecurringExpense(
+                    id,
+                    financeRestMapper.toDomain(recurringExpenseRequest)
+            );
+            return ResponseEntity.ok(financeRestMapper.toResponse(updatedRecurringExpense));
+        } catch (RecurringExpenseNotFoundException exception) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
     public ResponseEntity<Void> deleteRecurringExpense(Long id) {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        try {
+            financeInputPort.deleteRecurringExpense(id);
+            return ResponseEntity.noContent().build();
+        } catch (RecurringExpenseNotFoundException exception) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override

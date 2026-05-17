@@ -1,8 +1,10 @@
 package com.planifai.core.finance.application.usecase;
 
+import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
+import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
@@ -11,6 +13,7 @@ import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.IncomeCategory;
 import com.planifai.core.finance.domain.model.Recurrence;
+import com.planifai.core.finance.domain.model.RecurringExpense;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -27,10 +30,16 @@ public class FinanceUseCase implements FinanceInputPort {
 
     private final ExpenseOutputPort expenseOutputPort;
     private final IncomeOutputPort incomeOutputPort;
+    private final RecurringExpenseOutputPort recurringExpenseOutputPort;
 
-    public FinanceUseCase(ExpenseOutputPort expenseOutputPort, IncomeOutputPort incomeOutputPort) {
+    public FinanceUseCase(
+            ExpenseOutputPort expenseOutputPort,
+            IncomeOutputPort incomeOutputPort,
+            RecurringExpenseOutputPort recurringExpenseOutputPort
+    ) {
         this.expenseOutputPort = expenseOutputPort;
         this.incomeOutputPort = incomeOutputPort;
+        this.recurringExpenseOutputPort = recurringExpenseOutputPort;
     }
 
     @Override
@@ -99,6 +108,54 @@ public class FinanceUseCase implements FinanceInputPort {
         );
     }
 
+    @Override
+    public List<RecurringExpense> getRecurringExpenses() {
+        return recurringExpenseOutputPort.findAll();
+    }
+
+    @Override
+    public RecurringExpense createRecurringExpense(RecurringExpense recurringExpense) {
+        validateRecurringExpense(recurringExpense);
+        recurringExpense.setId(null);
+        if (recurringExpense.getActive() == null) {
+            recurringExpense.setActive(Boolean.TRUE);
+        }
+        if (recurringExpense.getCategory() == null) {
+            recurringExpense.setCategory(ExpenseCategory.OTHER);
+        }
+        return recurringExpenseOutputPort.save(recurringExpense);
+    }
+
+    @Override
+    public RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense) {
+        if (id == null) {
+            throw new IllegalArgumentException("Recurring expense id is required.");
+        }
+        if (recurringExpenseOutputPort.findById(id).isEmpty()) {
+            throw new RecurringExpenseNotFoundException(id);
+        }
+        validateRecurringExpense(recurringExpense);
+        recurringExpense.setId(id);
+        if (recurringExpense.getActive() == null) {
+            recurringExpense.setActive(Boolean.TRUE);
+        }
+        if (recurringExpense.getCategory() == null) {
+            recurringExpense.setCategory(ExpenseCategory.OTHER);
+        }
+        return recurringExpenseOutputPort.save(recurringExpense);
+    }
+
+    @Override
+    public void deleteRecurringExpense(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Recurring expense id is required.");
+        }
+        if (recurringExpenseOutputPort.findById(id).isEmpty()) {
+            throw new RecurringExpenseNotFoundException(id);
+        }
+        recurringExpenseOutputPort.deleteById(id);
+    }
+
     private void validateExpense(Expense expense) {
         if (expense == null) {
             throw new IllegalArgumentException("Expense is required.");
@@ -122,6 +179,31 @@ public class FinanceUseCase implements FinanceInputPort {
         validateAmount(income.getAmount(), "Income amount must be positive.");
         if (income.getIncomeDate() == null) {
             throw new IllegalArgumentException("Income date is required.");
+        }
+    }
+
+    private void validateRecurringExpense(RecurringExpense recurringExpense) {
+        if (recurringExpense == null) {
+            throw new IllegalArgumentException("Recurring expense is required.");
+        }
+        if (recurringExpense.getName() == null || recurringExpense.getName().isBlank()) {
+            throw new IllegalArgumentException("Recurring expense name is required.");
+        }
+        validateAmount(recurringExpense.getAmount(), "Recurring expense amount must be positive.");
+        if (recurringExpense.getRecurrence() == null) {
+            throw new IllegalArgumentException("Recurring expense recurrence is required.");
+        }
+        if (recurringExpense.getPaymentDay() == null
+                || recurringExpense.getPaymentDay() < 1
+                || recurringExpense.getPaymentDay() > 31) {
+            throw new IllegalArgumentException("Recurring expense payment day must be between 1 and 31.");
+        }
+        if (recurringExpense.getStartDate() == null) {
+            throw new IllegalArgumentException("Recurring expense start date is required.");
+        }
+        if (recurringExpense.getEndDate() != null
+                && recurringExpense.getEndDate().isBefore(recurringExpense.getStartDate())) {
+            throw new IllegalArgumentException("Recurring expense end date cannot be before start date.");
         }
     }
 

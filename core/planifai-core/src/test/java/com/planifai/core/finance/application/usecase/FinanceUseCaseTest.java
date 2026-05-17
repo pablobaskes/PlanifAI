@@ -2,12 +2,14 @@ package com.planifai.core.finance.application.usecase;
 
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
+import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.RecurringExpense;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -15,6 +17,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -23,7 +26,12 @@ class FinanceUseCaseTest {
 
     private final FakeExpenseOutputPort expenseOutputPort = new FakeExpenseOutputPort();
     private final FakeIncomeOutputPort incomeOutputPort = new FakeIncomeOutputPort();
-    private final FinanceUseCase financeUseCase = new FinanceUseCase(expenseOutputPort, incomeOutputPort);
+    private final FakeRecurringExpenseOutputPort recurringExpenseOutputPort = new FakeRecurringExpenseOutputPort();
+    private final FinanceUseCase financeUseCase = new FinanceUseCase(
+            expenseOutputPort,
+            incomeOutputPort,
+            recurringExpenseOutputPort
+    );
 
     @Test
     void getDashboardCalculatesMonthlySummarySavingsGoodHealthAndBreakdown() {
@@ -187,6 +195,46 @@ class FinanceUseCaseTest {
         public Income save(Income income) {
             incomes.add(income);
             return income;
+        }
+    }
+
+    private static final class FakeRecurringExpenseOutputPort implements RecurringExpenseOutputPort {
+
+        private final List<RecurringExpense> recurringExpenses = new ArrayList<>();
+
+        @Override
+        public List<RecurringExpense> findAll() {
+            return recurringExpenses;
+        }
+
+        @Override
+        public List<RecurringExpense> findByActive(boolean active) {
+            return recurringExpenses.stream()
+                    .filter(recurringExpense -> Boolean.valueOf(active).equals(recurringExpense.getActive()))
+                    .toList();
+        }
+
+        @Override
+        public List<RecurringExpense> findActiveWithinPeriod(LocalDate periodStart, LocalDate periodEnd) {
+            return recurringExpenses;
+        }
+
+        @Override
+        public Optional<RecurringExpense> findById(Long id) {
+            return recurringExpenses.stream()
+                    .filter(recurringExpense -> id.equals(recurringExpense.getId()))
+                    .findFirst();
+        }
+
+        @Override
+        public RecurringExpense save(RecurringExpense recurringExpense) {
+            recurringExpenses.add(recurringExpense);
+            return recurringExpense;
+        }
+
+        @Override
+        public void deleteById(Long id) {
+            recurringExpenses.removeIf(recurringExpense -> id.equals(recurringExpense.getId()));
         }
     }
 }

@@ -6,11 +6,13 @@ import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
+import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -77,6 +79,26 @@ class FinanceRestAdapterTest {
                     List.of()
             );
         }
+
+        @Override
+        public List<RecurringExpense> getRecurringExpenses() {
+            return List.of();
+        }
+
+        @Override
+        public RecurringExpense createRecurringExpense(RecurringExpense recurringExpense) {
+            return recurringExpense;
+        }
+
+        @Override
+        public RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense) {
+            recurringExpense.setId(id);
+            return recurringExpense;
+        }
+
+        @Override
+        public void deleteRecurringExpense(Long id) {
+        }
     }
 
     private static final class TestFinanceRestMapper implements FinanceRestMapper {
@@ -108,6 +130,11 @@ class FinanceRestAdapterTest {
 
         @Override
         public List<IncomeResponse> toIncomeResponse(List<Income> incomes) {
+            return List.of();
+        }
+
+        @Override
+        public List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses) {
             return List.of();
         }
     }

@@ -6,9 +6,13 @@ import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
+import com.planifai.core.dto.RecurringExpenseRequest;
+import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -31,6 +35,40 @@ public interface FinanceRestMapper {
     IncomeResponse toResponse(Income income);
 
     List<IncomeResponse> toIncomeResponse(List<Income> incomes);
+
+    default RecurringExpense toDomain(RecurringExpenseRequest request) {
+        if (request == null) {
+            return null;
+        }
+
+        RecurringExpense recurringExpense = new RecurringExpense();
+        recurringExpense.setName(request.getName());
+        recurringExpense.setAmount(toBigDecimal(request.getAmount()));
+        recurringExpense.setCategory(toDomain(request.getCategory()));
+        recurringExpense.setRecurrence(toDomain(request.getRecurrence()));
+        recurringExpense.setPaymentDay(request.getPaymentDay());
+        recurringExpense.setStartDate(request.getStartDate());
+        recurringExpense.setEndDate(request.getEndDate());
+        recurringExpense.setActive(request.getActive());
+        recurringExpense.setNotes(request.getNotes());
+        return recurringExpense;
+    }
+
+    default RecurringExpenseResponse toResponse(RecurringExpense recurringExpense) {
+        return new RecurringExpenseResponse()
+                .id(recurringExpense.getId())
+                .name(recurringExpense.getName())
+                .amount(toDouble(recurringExpense.getAmount()))
+                .category(toResponse(recurringExpense.getCategory()))
+                .recurrence(toResponse(recurringExpense.getRecurrence()))
+                .paymentDay(recurringExpense.getPaymentDay())
+                .startDate(recurringExpense.getStartDate())
+                .endDate(recurringExpense.getEndDate())
+                .active(recurringExpense.getActive())
+                .notes(recurringExpense.getNotes());
+    }
+
+    List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses);
 
     default FinanceDashboardResponse toResponse(FinanceDashboard dashboard) {
         return new FinanceDashboardResponse()
@@ -57,5 +95,41 @@ public interface FinanceRestMapper {
 
     private Double toDouble(BigDecimal value) {
         return value != null ? value.doubleValue() : 0.0;
+    }
+
+    private BigDecimal toBigDecimal(Double value) {
+        return value != null ? BigDecimal.valueOf(value) : null;
+    }
+
+    private com.planifai.core.finance.domain.model.ExpenseCategory toDomain(
+            com.planifai.core.dto.ExpenseCategory category
+    ) {
+        return category != null
+                ? com.planifai.core.finance.domain.model.ExpenseCategory.valueOf(category.name())
+                : null;
+    }
+
+    private com.planifai.core.dto.ExpenseCategory toResponse(
+            com.planifai.core.finance.domain.model.ExpenseCategory category
+    ) {
+        return category != null
+                ? com.planifai.core.dto.ExpenseCategory.valueOf(category.name())
+                : null;
+    }
+
+    private RecurringExpenseRecurrence toDomain(com.planifai.core.dto.Recurrence recurrence) {
+        if (recurrence == null) {
+            return null;
+        }
+        if (recurrence == com.planifai.core.dto.Recurrence.ONE_OFF) {
+            throw new IllegalArgumentException("Recurring expense recurrence must be MONTHLY or YEARLY.");
+        }
+        return RecurringExpenseRecurrence.valueOf(recurrence.name());
+    }
+
+    private com.planifai.core.dto.Recurrence toResponse(RecurringExpenseRecurrence recurrence) {
+        return recurrence != null
+                ? com.planifai.core.dto.Recurrence.valueOf(recurrence.name())
+                : null;
     }
 }
