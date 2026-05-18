@@ -5,5 +5,6 @@ public enum IncomeCategory {
     RENTAL_INCOME,
     FREELANCE,
     INVESTMENT,
+    SAVINGS,
     OTHER
 }

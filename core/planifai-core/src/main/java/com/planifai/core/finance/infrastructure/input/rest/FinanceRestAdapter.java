@@ -3,6 +3,8 @@ package com.planifai.core.finance.infrastructure.input.rest;
 import com.planifai.core.api.FinanceApi;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
+import com.planifai.core.dto.FinanceCategory;
+import com.planifai.core.dto.FinanceCategoryResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
@@ -21,7 +23,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.YearMonth;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 @RestController
 public class FinanceRestAdapter implements FinanceApi {
@@ -60,6 +64,15 @@ public class FinanceRestAdapter implements FinanceApi {
     public ResponseEntity<FinanceDashboardResponse> getFinanceDashboard(String month) {
         FinanceDashboard dashboard = financeInputPort.getDashboard(YearMonth.parse(month));
         return ResponseEntity.ok(financeRestMapper.toResponse(dashboard));
+    }
+
+    @Override
+    public ResponseEntity<List<FinanceCategoryResponse>> getFinanceCategories() {
+        return ResponseEntity.ok(Arrays.stream(FinanceCategory.values())
+                .map(category -> new FinanceCategoryResponse()
+                        .code(category)
+                        .label(toCategoryLabel(category)))
+                .toList());
     }
 
     @Override
@@ -115,5 +128,10 @@ public class FinanceRestAdapter implements FinanceApi {
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    private String toCategoryLabel(FinanceCategory category) {
+        String value = category.name().toLowerCase(Locale.ROOT).replace('_', ' ');
+        return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
     }
 }

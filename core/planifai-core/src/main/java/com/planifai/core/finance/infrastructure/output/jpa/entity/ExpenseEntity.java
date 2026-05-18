@@ -2,6 +2,7 @@ package com.planifai.core.finance.infrastructure.output.jpa.entity;
 
 import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.Recurrence;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -23,7 +24,7 @@ public class ExpenseEntity {
     private String concept;
     private BigDecimal amount;
     private LocalDate expenseDate;
-    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 40)
     private ExpenseCategory category;
     @Enumerated(EnumType.STRING)
     private Recurrence recurrence;

@@ -127,6 +127,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceDashboardResponse'
+  /api/finance/categories:
+    get:
+      tags:
+        - Finance
+      operationId: getFinanceCategories
+      summary: List finance categories
+      description: Returns the backend-controlled financial categories available for transactions and recurring expenses. Categories are fixed enums; user-created dynamic categories are not supported yet.
+      responses:
+        '200':
+          description: Finance categories returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FinanceCategoryResponse'
   /api/finance/recurring-expenses:
     get:
       tags:
@@ -274,12 +290,23 @@ components:
             createdAt:
               type: string
               format: date-time
-    ExpenseCategory:
+    FinanceCategory:
       type: string
-      enum: [MORTGAGE, RENTAL_PROPERTY, UTILITIES, GROCERIES, TRANSPORT, HEALTH, LEISURE, TAXES, OTHER]
+      description: Backend-controlled finance category used for expenses, transaction-like records, recurring expenses, projections, and dashboards. Dynamic user-created categories are intentionally deferred.
+      enum: [FOOD, RESTAURANTS, TRANSPORT, HEALTH, EDUCATION, SUBSCRIPTIONS, SAVINGS, ENTERTAINMENT, TRAVEL, PETS, OTHER, HOUSING, UTILITIES]
+    FinanceCategoryResponse:
+      type: object
+      required: [code, label]
+      properties:
+        code:
+          $ref: '#/components/schemas/FinanceCategory'
+        label:
+          type: string
+          description: Human-readable category label for UI display.
+          example: Food
     IncomeCategory:
       type: string
-      enum: [SALARY, RENTAL_INCOME, FREELANCE, INVESTMENT, OTHER]
+      enum: [SALARY, RENTAL_INCOME, FREELANCE, INVESTMENT, SAVINGS, OTHER]
     Recurrence:
       type: string
       enum: [ONE_OFF, MONTHLY, YEARLY]
@@ -295,7 +322,7 @@ components:
       required: [category, totalAmount, percentage]
       properties:
         category:
-          $ref: '#/components/schemas/ExpenseCategory'
+          $ref: '#/components/schemas/FinanceCategory'
         totalAmount:
           type: number
           format: double
@@ -371,7 +398,7 @@ components:
           exclusiveMinimum: true
           description: Expected recurring amount for projection and planning only.
         category:
-          $ref: '#/components/schemas/ExpenseCategory'
+          $ref: '#/components/schemas/FinanceCategory'
         recurrence:
           $ref: '#/components/schemas/Recurrence'
         paymentDay:
@@ -422,7 +449,7 @@ components:
           minimum: 0
           description: Projected amount for this month.
         category:
-          $ref: '#/components/schemas/ExpenseCategory'
+          $ref: '#/components/schemas/FinanceCategory'
         dueDate:
           type: string
           format: date
@@ -476,7 +503,7 @@ components:
             $ref: '#/components/schemas/UpcomingPaymentItem'
     ExpenseRequest:
       type: object
-      required: [concept, amount, expenseDate]
+      required: [concept, amount, expenseDate, category]
       properties:
         concept:
           type: string
@@ -491,7 +518,7 @@ components:
           type: string
           format: date
         category:
-          $ref: '#/components/schemas/ExpenseCategory'
+          $ref: '#/components/schemas/FinanceCategory'
         recurrence:
           $ref: '#/components/schemas/Recurrence'
         notes:

@@ -55,9 +55,6 @@ public class FinanceUseCase implements FinanceInputPort {
     public Expense createExpense(Expense expense) {
         validateExpense(expense);
         expense.setId(null);
-        if (expense.getCategory() == null) {
-            expense.setCategory(ExpenseCategory.OTHER);
-        }
         if (expense.getRecurrence() == null) {
             expense.setRecurrence(Recurrence.ONE_OFF);
         }
@@ -166,9 +163,6 @@ public class FinanceUseCase implements FinanceInputPort {
         if (recurringExpense.getActive() == null) {
             recurringExpense.setActive(Boolean.TRUE);
         }
-        if (recurringExpense.getCategory() == null) {
-            recurringExpense.setCategory(ExpenseCategory.OTHER);
-        }
         return recurringExpenseOutputPort.save(recurringExpense);
     }
 
@@ -184,9 +178,6 @@ public class FinanceUseCase implements FinanceInputPort {
         recurringExpense.setId(id);
         if (recurringExpense.getActive() == null) {
             recurringExpense.setActive(Boolean.TRUE);
-        }
-        if (recurringExpense.getCategory() == null) {
-            recurringExpense.setCategory(ExpenseCategory.OTHER);
         }
         return recurringExpenseOutputPort.save(recurringExpense);
     }
@@ -213,6 +204,9 @@ public class FinanceUseCase implements FinanceInputPort {
         if (expense.getExpenseDate() == null) {
             throw new IllegalArgumentException("Expense date is required.");
         }
+        if (expense.getCategory() == null) {
+            throw new IllegalArgumentException("Expense category is required.");
+        }
     }
 
     private void validateIncome(Income income) {
@@ -238,6 +232,9 @@ public class FinanceUseCase implements FinanceInputPort {
         validateAmount(recurringExpense.getAmount(), "Recurring expense amount must be positive.");
         if (recurringExpense.getRecurrence() == null) {
             throw new IllegalArgumentException("Recurring expense recurrence is required.");
+        }
+        if (recurringExpense.getCategory() == null) {
+            throw new IllegalArgumentException("Recurring expense category is required.");
         }
         if (recurringExpense.getPaymentDay() == null
                 || recurringExpense.getPaymentDay() < 1

@@ -25,7 +25,6 @@ public class RecurringExpenseEntity {
     private String name;
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
     private ExpenseCategory category;
     @Enumerated(EnumType.STRING)

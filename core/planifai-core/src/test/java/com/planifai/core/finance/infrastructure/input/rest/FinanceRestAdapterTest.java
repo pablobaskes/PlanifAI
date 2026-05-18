@@ -2,6 +2,7 @@ package com.planifai.core.finance.infrastructure.input.rest;
 
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
+import com.planifai.core.dto.FinanceCategory;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
@@ -53,7 +54,7 @@ class FinanceRestAdapterTest {
         RecurringExpenseRequest request = new RecurringExpenseRequest(
                 "Rent",
                 1000.0,
-                com.planifai.core.dto.ExpenseCategory.MORTGAGE,
+                FinanceCategory.HOUSING,
                 Recurrence.MONTHLY,
                 10,
                 LocalDate.of(2026, 1, 1),
@@ -74,7 +75,7 @@ class FinanceRestAdapterTest {
         RecurringExpenseRequest request = new RecurringExpenseRequest(
                 "Invalid",
                 1000.0,
-                com.planifai.core.dto.ExpenseCategory.OTHER,
+                FinanceCategory.OTHER,
                 Recurrence.ONE_OFF,
                 10,
                 LocalDate.of(2026, 1, 1),

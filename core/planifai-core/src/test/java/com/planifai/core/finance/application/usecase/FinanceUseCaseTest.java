@@ -41,9 +41,9 @@ class FinanceUseCaseTest {
     void getDashboardCalculatesMonthlySummarySavingsGoodHealthAndBreakdown() {
         incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 5)));
         incomeOutputPort.incomes.add(income("999.00", LocalDate.of(2026, 6, 1)));
-        expenseOutputPort.expenses.add(expense("1000.00", LocalDate.of(2026, 5, 10), ExpenseCategory.MORTGAGE));
-        expenseOutputPort.expenses.add(expense("500.00", LocalDate.of(2026, 5, 12), ExpenseCategory.GROCERIES));
-        expenseOutputPort.expenses.add(expense("50.00", LocalDate.of(2026, 4, 30), ExpenseCategory.LEISURE));
+        expenseOutputPort.expenses.add(expense("1000.00", LocalDate.of(2026, 5, 10), ExpenseCategory.HOUSING));
+        expenseOutputPort.expenses.add(expense("500.00", LocalDate.of(2026, 5, 12), ExpenseCategory.FOOD));
+        expenseOutputPort.expenses.add(expense("50.00", LocalDate.of(2026, 4, 30), ExpenseCategory.ENTERTAINMENT));
 
         FinanceDashboard dashboard = financeUseCase.getDashboard(YearMonth.of(2026, 5));
 
@@ -54,8 +54,8 @@ class FinanceUseCaseTest {
         assertBigDecimal("50.00", dashboard.savingsRate());
         assertEquals(FinanceHealthStatus.GOOD, dashboard.healthStatus());
         assertEquals(2, dashboard.expensesByCategory().size());
-        assertBreakdown(dashboard.expensesByCategory().get(0), ExpenseCategory.MORTGAGE, "1000.00", "66.67");
-        assertBreakdown(dashboard.expensesByCategory().get(1), ExpenseCategory.GROCERIES, "500.00", "33.33");
+        assertBreakdown(dashboard.expensesByCategory().get(0), ExpenseCategory.HOUSING, "1000.00", "66.67");
+        assertBreakdown(dashboard.expensesByCategory().get(1), ExpenseCategory.FOOD, "500.00", "33.33");
     }
 
     @Test
@@ -113,14 +113,14 @@ class FinanceUseCaseTest {
     @Test
     void getDashboardGroupsExpensesByCategoryAndUsesOtherForMissingCategory() {
         incomeOutputPort.incomes.add(income("1000.00", LocalDate.of(2026, 5, 1)));
-        expenseOutputPort.expenses.add(expense("100.00", LocalDate.of(2026, 5, 2), ExpenseCategory.GROCERIES));
-        expenseOutputPort.expenses.add(expense("50.00", LocalDate.of(2026, 5, 3), ExpenseCategory.GROCERIES));
+        expenseOutputPort.expenses.add(expense("100.00", LocalDate.of(2026, 5, 2), ExpenseCategory.FOOD));
+        expenseOutputPort.expenses.add(expense("50.00", LocalDate.of(2026, 5, 3), ExpenseCategory.FOOD));
         expenseOutputPort.expenses.add(expense("50.00", LocalDate.of(2026, 5, 4), null));
 
         FinanceDashboard dashboard = financeUseCase.getDashboard(YearMonth.of(2026, 5));
 
         assertEquals(2, dashboard.expensesByCategory().size());
-        assertBreakdown(dashboard.expensesByCategory().get(0), ExpenseCategory.GROCERIES, "150.00", "75.00");
+        assertBreakdown(dashboard.expensesByCategory().get(0), ExpenseCategory.FOOD, "150.00", "75.00");
         assertBreakdown(dashboard.expensesByCategory().get(1), ExpenseCategory.OTHER, "50.00", "25.00");
     }
 
@@ -186,12 +186,12 @@ class FinanceUseCaseTest {
     void getMonthlyObligationsSummaryCalculatesTotalsPendingAndRealAvailableMoney() {
         incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
         expenseOutputPort.expenses.add(expense("Utilities", "100.00", LocalDate.of(2026, 5, 5), ExpenseCategory.UTILITIES));
-        expenseOutputPort.expenses.add(expense("Groceries", "500.00", LocalDate.of(2026, 5, 8), ExpenseCategory.GROCERIES));
+        expenseOutputPort.expenses.add(expense("Groceries", "500.00", LocalDate.of(2026, 5, 8), ExpenseCategory.FOOD));
         recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
                 1L,
                 "Rent",
                 "1000.00",
-                ExpenseCategory.MORTGAGE,
+                ExpenseCategory.HOUSING,
                 RecurringExpenseRecurrence.MONTHLY,
                 10,
                 LocalDate.of(2026, 1, 1),
@@ -271,7 +271,7 @@ class FinanceUseCaseTest {
                 5L,
                 "Yearly other month",
                 "500.00",
-                ExpenseCategory.TAXES,
+                ExpenseCategory.OTHER,
                 RecurringExpenseRecurrence.YEARLY,
                 10,
                 LocalDate.of(2026, 6, 1),

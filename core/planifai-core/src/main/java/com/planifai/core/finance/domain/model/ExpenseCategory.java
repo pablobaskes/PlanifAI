@@ -1,13 +1,17 @@
 package com.planifai.core.finance.domain.model;
 
 public enum ExpenseCategory {
-    MORTGAGE,
-    RENTAL_PROPERTY,
-    UTILITIES,
-    GROCERIES,
+    FOOD,
+    RESTAURANTS,
     TRANSPORT,
     HEALTH,
-    LEISURE,
-    TAXES,
-    OTHER
+    EDUCATION,
+    SUBSCRIPTIONS,
+    SAVINGS,
+    ENTERTAINMENT,
+    TRAVEL,
+    PETS,
+    OTHER,
+    HOUSING,
+    UTILITIES
 }

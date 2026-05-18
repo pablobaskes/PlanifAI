@@ -2,6 +2,7 @@ package com.planifai.core.finance.infrastructure.input.rest.mapper;
 
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
+import com.planifai.core.dto.FinanceCategory;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
@@ -115,7 +116,7 @@ public interface FinanceRestMapper {
             com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown breakdown
     ) {
         return new com.planifai.core.dto.ExpenseCategoryBreakdown()
-                .category(com.planifai.core.dto.ExpenseCategory.valueOf(breakdown.category().name()))
+                .category(FinanceCategory.valueOf(breakdown.category().name()))
                 .totalAmount(toDouble(breakdown.totalAmount()))
                 .percentage(toDouble(breakdown.percentage()));
     }
@@ -129,18 +130,18 @@ public interface FinanceRestMapper {
     }
 
     private com.planifai.core.finance.domain.model.ExpenseCategory toDomain(
-            com.planifai.core.dto.ExpenseCategory category
+            FinanceCategory category
     ) {
         return category != null
                 ? com.planifai.core.finance.domain.model.ExpenseCategory.valueOf(category.name())
                 : null;
     }
 
-    private com.planifai.core.dto.ExpenseCategory toResponse(
+    private FinanceCategory toResponse(
             com.planifai.core.finance.domain.model.ExpenseCategory category
     ) {
         return category != null
-                ? com.planifai.core.dto.ExpenseCategory.valueOf(category.name())
+                ? FinanceCategory.valueOf(category.name())
                 : null;
     }
 
