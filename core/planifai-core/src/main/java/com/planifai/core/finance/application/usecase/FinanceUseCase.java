@@ -8,6 +8,8 @@ import com.planifai.core.finance.application.ports.output.RecurringExpenseOutput
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
+import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
+import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.Income;
@@ -49,6 +51,16 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public List<Expense> getExpenses() {
         return expenseOutputPort.findAll();
+    }
+
+    @Override
+    public List<Expense> getExpenses(ExpenseCategory category) {
+        return category != null ? expenseOutputPort.findByCategory(category) : expenseOutputPort.findAll();
+    }
+
+    @Override
+    public List<Expense> getFinanceTransactions(ExpenseCategory category) {
+        return getExpenses(category);
     }
 
     @Override
@@ -110,6 +122,24 @@ public class FinanceUseCase implements FinanceInputPort {
     }
 
     @Override
+    public FinanceCategoryStatistics getCategoryStatistics(YearMonth month) {
+        if (month == null) {
+            throw new IllegalArgumentException("Category statistics month is required.");
+        }
+
+        LocalDate from = month.atDay(1);
+        LocalDate to = month.atEndOfMonth();
+        List<Expense> expenses = expenseOutputPort.findByExpenseDateBetween(from, to);
+        BigDecimal totalExpenses = sumExpenses(expenses);
+
+        return new FinanceCategoryStatistics(
+                month,
+                totalExpenses,
+                buildCategoryStatistics(expenses, totalExpenses)
+        );
+    }
+
+    @Override
     public MonthlyObligationsSummary getMonthlyObligationsSummary(YearMonth month) {
         if (month == null) {
             throw new IllegalArgumentException("Obligations summary month is required.");
@@ -154,6 +184,13 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public List<RecurringExpense> getRecurringExpenses() {
         return recurringExpenseOutputPort.findAll();
+    }
+
+    @Override
+    public List<RecurringExpense> getRecurringExpenses(ExpenseCategory category) {
+        return category != null
+                ? recurringExpenseOutputPort.findByCategory(category)
+                : recurringExpenseOutputPort.findAll();
     }
 
     @Override
@@ -407,6 +444,28 @@ public class FinanceUseCase implements FinanceInputPort {
                 .sorted(Comparator
                         .comparing(ExpenseCategoryBreakdown::totalAmount, Comparator.reverseOrder())
                         .thenComparing(breakdown -> breakdown.category().name()))
+                .toList();
+    }
+
+    private List<FinanceCategoryStatistic> buildCategoryStatistics(List<Expense> expenses, BigDecimal totalExpenses) {
+        Map<ExpenseCategory, BigDecimal> totalsByCategory = expenses.stream()
+                .collect(Collectors.groupingBy(
+                        expense -> expense.getCategory() != null ? expense.getCategory() : ExpenseCategory.OTHER,
+                        Collectors.mapping(
+                                expense -> expense.getAmount() != null ? expense.getAmount() : BigDecimal.ZERO,
+                                Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)
+                        )
+                ));
+
+        return totalsByCategory.entrySet().stream()
+                .map(entry -> new FinanceCategoryStatistic(
+                        entry.getKey(),
+                        entry.getValue(),
+                        calculateExpensePercentage(entry.getValue(), totalExpenses)
+                ))
+                .sorted(Comparator
+                        .comparing(FinanceCategoryStatistic::amount, Comparator.reverseOrder())
+                        .thenComparing(statistic -> statistic.category().name()))
                 .toList();
     }
 

@@ -3,6 +3,8 @@ package com.planifai.core.finance.infrastructure.input.rest;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
+import com.planifai.core.dto.FinanceCategoryResponse;
+import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
@@ -13,6 +15,8 @@ import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.dto.Recurrence;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.Expense;
+import com.planifai.core.finance.domain.model.ExpenseCategory;
+import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.Income;
@@ -69,6 +73,39 @@ class FinanceRestAdapterTest {
     }
 
     @Test
+    void getFinanceCategoriesReturnsBackendControlledValues() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<List<FinanceCategoryResponse>> response = adapter.getFinanceCategories();
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(FinanceCategory.FOOD, response.getBody().get(0).getCode());
+    }
+
+    @Test
+    void getFinanceTransactionsPassesCategoryFilter() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<List<ExpenseResponse>> response = adapter.getFinanceTransactions(FinanceCategory.FOOD);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(ExpenseCategory.FOOD, financeInputPort.requestedCategory);
+    }
+
+    @Test
+    void getRecurringExpensesPassesCategoryFilter() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<List<RecurringExpenseResponse>> response = adapter.getRecurringExpenses(FinanceCategory.SUBSCRIPTIONS);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(ExpenseCategory.SUBSCRIPTIONS, financeInputPort.requestedCategory);
+    }
+
+    @Test
     void createRecurringExpenseReturnsBadRequestForInvalidRecurrence() {
         FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
         FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
@@ -109,12 +146,37 @@ class FinanceRestAdapterTest {
         assertEquals(400, response.getStatusCode().value());
     }
 
+    @Test
+    void getFinanceCategoryStatisticsParsesMonthAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<FinanceCategoryStatisticsResponse> response = adapter.getFinanceCategoryStatistics("2026-05");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedMonth);
+        assertEquals("2026-05", response.getBody().getMonth());
+    }
+
     private static final class FakeFinanceInputPort implements FinanceInputPort {
 
         private YearMonth requestedMonth;
+        private ExpenseCategory requestedCategory;
 
         @Override
         public List<Expense> getExpenses() {
+            return List.of();
+        }
+
+        @Override
+        public List<Expense> getExpenses(ExpenseCategory category) {
+            this.requestedCategory = category;
+            return List.of();
+        }
+
+        @Override
+        public List<Expense> getFinanceTransactions(ExpenseCategory category) {
+            this.requestedCategory = category;
             return List.of();
         }
 
@@ -149,7 +211,14 @@ class FinanceRestAdapterTest {
         }
 
         @Override
+        public FinanceCategoryStatistics getCategoryStatistics(YearMonth month) {
+            this.requestedMonth = month;
+            return new FinanceCategoryStatistics(month, BigDecimal.ZERO, List.of());
+        }
+
+        @Override
         public MonthlyObligationsSummary getMonthlyObligationsSummary(YearMonth month) {
+            this.requestedMonth = month;
             return new MonthlyObligationsSummary(
                     month,
                     BigDecimal.ZERO,
@@ -162,6 +231,12 @@ class FinanceRestAdapterTest {
 
         @Override
         public List<RecurringExpense> getRecurringExpenses() {
+            return List.of();
+        }
+
+        @Override
+        public List<RecurringExpense> getRecurringExpenses(ExpenseCategory category) {
+            this.requestedCategory = category;
             return List.of();
         }
 
@@ -228,6 +303,14 @@ class FinanceRestAdapterTest {
                     .paidOrRegisteredObligations(0.0)
                     .realAvailableMoney(0.0)
                     .upcomingPayments(List.of());
+        }
+
+        @Override
+        public FinanceCategoryStatisticsResponse toResponse(FinanceCategoryStatistics statistics) {
+            return new FinanceCategoryStatisticsResponse()
+                    .month(statistics.month().toString())
+                    .totalExpenses(0.0)
+                    .categories(List.of());
         }
     }
 }

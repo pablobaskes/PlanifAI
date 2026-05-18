@@ -3,6 +3,8 @@ package com.planifai.core.finance.infrastructure.input.rest.mapper;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
+import com.planifai.core.dto.FinanceCategoryStatisticItem;
+import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
 import com.planifai.core.dto.IncomeRequest;
@@ -12,6 +14,8 @@ import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.model.Expense;
+import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
+import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
@@ -112,6 +116,22 @@ public interface FinanceRestMapper {
                         .toList());
     }
 
+    default FinanceCategoryStatisticsResponse toResponse(FinanceCategoryStatistics statistics) {
+        return new FinanceCategoryStatisticsResponse()
+                .month(statistics.month().toString())
+                .totalExpenses(toDouble(statistics.totalExpenses()))
+                .categories(statistics.categories().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default FinanceCategoryStatisticItem toResponse(FinanceCategoryStatistic statistic) {
+        return new FinanceCategoryStatisticItem()
+                .category(toResponse(statistic.category()))
+                .amount(toDouble(statistic.amount()))
+                .percentage(toDouble(statistic.percentage()));
+    }
+
     default com.planifai.core.dto.ExpenseCategoryBreakdown toResponse(
             com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown breakdown
     ) {
@@ -129,7 +149,7 @@ public interface FinanceRestMapper {
         return value != null ? BigDecimal.valueOf(value) : null;
     }
 
-    private com.planifai.core.finance.domain.model.ExpenseCategory toDomain(
+    default com.planifai.core.finance.domain.model.ExpenseCategory toDomain(
             FinanceCategory category
     ) {
         return category != null

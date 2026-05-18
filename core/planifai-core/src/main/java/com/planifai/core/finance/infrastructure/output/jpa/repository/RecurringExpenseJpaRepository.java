@@ -1,5 +1,6 @@
 package com.planifai.core.finance.infrastructure.output.jpa.repository;
 
+import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.RecurringExpenseEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,8 @@ import java.util.List;
 public interface RecurringExpenseJpaRepository extends JpaRepository<RecurringExpenseEntity, Long> {
 
     List<RecurringExpenseEntity> findByActive(boolean active);
+
+    List<RecurringExpenseEntity> findByCategory(ExpenseCategory category);
 
     @Query("""
             select recurringExpense

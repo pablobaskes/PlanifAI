@@ -2,6 +2,7 @@ package com.planifai.core.finance.infrastructure.output.jpa;
 
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.domain.model.Expense;
+import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.ExpenseEntity;
 import com.planifai.core.finance.infrastructure.output.jpa.mapper.ExpenseJpaMapper;
 import com.planifai.core.finance.infrastructure.output.jpa.repository.ExpenseJpaRepository;
@@ -24,6 +25,11 @@ public class ExpenseJpaAdapter implements ExpenseOutputPort {
     @Override
     public List<Expense> findAll() {
         return expenseJpaMapper.toDomain(expenseJpaRepository.findAll());
+    }
+
+    @Override
+    public List<Expense> findByCategory(ExpenseCategory category) {
+        return expenseJpaMapper.toDomain(expenseJpaRepository.findByCategory(category));
     }
 
     @Override

@@ -183,6 +183,81 @@ class FinanceUseCaseTest {
     }
 
     @Test
+    void createExpenseRejectsMissingCategory() {
+        Expense expense = expense("Electricity", "100.00", LocalDate.of(2026, 5, 2), null);
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createExpense(expense));
+    }
+
+    @Test
+    void getExpensesFiltersByCategory() {
+        expenseOutputPort.expenses.add(expense("Lunch", "25.00", LocalDate.of(2026, 5, 2), ExpenseCategory.RESTAURANTS));
+        expenseOutputPort.expenses.add(expense("Internet", "50.00", LocalDate.of(2026, 5, 3), ExpenseCategory.UTILITIES));
+
+        List<Expense> filteredExpenses = financeUseCase.getExpenses(ExpenseCategory.RESTAURANTS);
+
+        assertEquals(1, filteredExpenses.size());
+        assertEquals("Lunch", filteredExpenses.get(0).getConcept());
+    }
+
+    @Test
+    void getRecurringExpensesFiltersByCategory() {
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Streaming",
+                "12.00",
+                ExpenseCategory.SUBSCRIPTIONS,
+                RecurringExpenseRecurrence.MONTHLY,
+                3,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                2L,
+                "Rent",
+                "900.00",
+                ExpenseCategory.HOUSING,
+                RecurringExpenseRecurrence.MONTHLY,
+                1,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        List<RecurringExpense> filteredExpenses = financeUseCase.getRecurringExpenses(ExpenseCategory.SUBSCRIPTIONS);
+
+        assertEquals(1, filteredExpenses.size());
+        assertEquals("Streaming", filteredExpenses.get(0).getName());
+    }
+
+    @Test
+    void getCategoryStatisticsCalculatesAmountsAndPercentages() {
+        expenseOutputPort.expenses.add(expense("Lunch", "25.00", LocalDate.of(2026, 5, 2), ExpenseCategory.RESTAURANTS));
+        expenseOutputPort.expenses.add(expense("Groceries", "75.00", LocalDate.of(2026, 5, 3), ExpenseCategory.FOOD));
+        expenseOutputPort.expenses.add(expense("Other month", "100.00", LocalDate.of(2026, 6, 3), ExpenseCategory.FOOD));
+
+        var statistics = financeUseCase.getCategoryStatistics(YearMonth.of(2026, 5));
+
+        assertBigDecimal("100.00", statistics.totalExpenses());
+        assertEquals(2, statistics.categories().size());
+        assertEquals(ExpenseCategory.FOOD, statistics.categories().get(0).category());
+        assertBigDecimal("75.00", statistics.categories().get(0).amount());
+        assertBigDecimal("75.00", statistics.categories().get(0).percentage());
+        assertEquals(ExpenseCategory.RESTAURANTS, statistics.categories().get(1).category());
+        assertBigDecimal("25.00", statistics.categories().get(1).amount());
+        assertBigDecimal("25.00", statistics.categories().get(1).percentage());
+    }
+
+    @Test
+    void getCategoryStatisticsReturnsSafeValuesForEmptyMonth() {
+        var statistics = financeUseCase.getCategoryStatistics(YearMonth.of(2026, 5));
+
+        assertBigDecimal("0", statistics.totalExpenses());
+        assertTrue(statistics.categories().isEmpty());
+    }
+
+    @Test
     void getMonthlyObligationsSummaryCalculatesTotalsPendingAndRealAvailableMoney() {
         incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
         expenseOutputPort.expenses.add(expense("Utilities", "100.00", LocalDate.of(2026, 5, 5), ExpenseCategory.UTILITIES));
@@ -367,6 +442,13 @@ class FinanceUseCaseTest {
         }
 
         @Override
+        public List<Expense> findByCategory(ExpenseCategory category) {
+            return expenses.stream()
+                    .filter(expense -> category == expense.getCategory())
+                    .toList();
+        }
+
+        @Override
         public List<Expense> findByExpenseDateBetween(LocalDate from, LocalDate to) {
             return expenses.stream()
                     .filter(expense -> !expense.getExpenseDate().isBefore(from))
@@ -413,6 +495,13 @@ class FinanceUseCaseTest {
         @Override
         public List<RecurringExpense> findAll() {
             return recurringExpenses;
+        }
+
+        @Override
+        public List<RecurringExpense> findByCategory(ExpenseCategory category) {
+            return recurringExpenses.stream()
+                    .filter(recurringExpense -> category == recurringExpense.getCategory())
+                    .toList();
         }
 
         @Override

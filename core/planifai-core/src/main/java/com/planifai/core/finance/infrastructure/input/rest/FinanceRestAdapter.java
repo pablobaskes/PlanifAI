@@ -5,6 +5,7 @@ import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
 import com.planifai.core.dto.FinanceCategoryResponse;
+import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
@@ -39,14 +40,27 @@ public class FinanceRestAdapter implements FinanceApi {
     }
 
     @Override
-    public ResponseEntity<List<ExpenseResponse>> getExpenses() {
-        return ResponseEntity.ok(financeRestMapper.toExpenseResponse(financeInputPort.getExpenses()));
+    public ResponseEntity<List<ExpenseResponse>> getExpenses(FinanceCategory category) {
+        return ResponseEntity.ok(financeRestMapper.toExpenseResponse(
+                financeInputPort.getExpenses(financeRestMapper.toDomain(category))
+        ));
+    }
+
+    @Override
+    public ResponseEntity<List<ExpenseResponse>> getFinanceTransactions(FinanceCategory category) {
+        return ResponseEntity.ok(financeRestMapper.toExpenseResponse(
+                financeInputPort.getFinanceTransactions(financeRestMapper.toDomain(category))
+        ));
     }
 
     @Override
     public ResponseEntity<ExpenseResponse> createExpense(ExpenseRequest expenseRequest) {
-        Expense createdExpense = financeInputPort.createExpense(financeRestMapper.toDomain(expenseRequest));
-        return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdExpense));
+        try {
+            Expense createdExpense = financeInputPort.createExpense(financeRestMapper.toDomain(expenseRequest));
+            return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdExpense));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
@@ -56,8 +70,12 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<IncomeResponse> createIncome(IncomeRequest incomeRequest) {
-        Income createdIncome = financeInputPort.createIncome(financeRestMapper.toDomain(incomeRequest));
-        return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdIncome));
+        try {
+            Income createdIncome = financeInputPort.createIncome(financeRestMapper.toDomain(incomeRequest));
+            return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdIncome));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
@@ -76,8 +94,21 @@ public class FinanceRestAdapter implements FinanceApi {
     }
 
     @Override
-    public ResponseEntity<List<RecurringExpenseResponse>> getRecurringExpenses() {
-        return ResponseEntity.ok(financeRestMapper.toRecurringExpenseResponse(financeInputPort.getRecurringExpenses()));
+    public ResponseEntity<FinanceCategoryStatisticsResponse> getFinanceCategoryStatistics(String month) {
+        try {
+            return ResponseEntity.ok(financeRestMapper.toResponse(
+                    financeInputPort.getCategoryStatistics(YearMonth.parse(month))
+            ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<RecurringExpenseResponse>> getRecurringExpenses(FinanceCategory category) {
+        return ResponseEntity.ok(financeRestMapper.toRecurringExpenseResponse(
+                financeInputPort.getRecurringExpenses(financeRestMapper.toDomain(category))
+        ));
     }
 
     @Override

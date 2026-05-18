@@ -1,6 +1,7 @@
 package com.planifai.core.finance.infrastructure.output.jpa;
 
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
+import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.RecurringExpenseEntity;
 import com.planifai.core.finance.infrastructure.output.jpa.mapper.RecurringExpenseJpaMapper;
@@ -28,6 +29,11 @@ public class RecurringExpenseJpaAdapter implements RecurringExpenseOutputPort {
     @Override
     public List<RecurringExpense> findAll() {
         return recurringExpenseJpaMapper.toDomain(recurringExpenseJpaRepository.findAll());
+    }
+
+    @Override
+    public List<RecurringExpense> findByCategory(ExpenseCategory category) {
+        return recurringExpenseJpaMapper.toDomain(recurringExpenseJpaRepository.findByCategory(category));
     }
 
     @Override
