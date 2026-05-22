@@ -1,6 +1,7 @@
 package com.planifai.core.finance.domain.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
@@ -54,6 +55,40 @@ public class SavingsGoal {
 
         BigDecimal remainingAmount = targetAmount.subtract(currentAmount);
         return remainingAmount.compareTo(BigDecimal.ZERO) > 0 ? remainingAmount : BigDecimal.ZERO;
+    }
+
+    public BigDecimal progressPercentage() {
+        if (targetAmount == null || targetAmount.compareTo(BigDecimal.ZERO) <= 0 || currentAmount == null) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal progressPercentage = currentAmount
+                .multiply(BigDecimal.valueOf(100))
+                .divide(targetAmount, 2, RoundingMode.HALF_UP);
+        return progressPercentage.compareTo(BigDecimal.valueOf(100)) > 0
+                ? BigDecimal.valueOf(100)
+                : progressPercentage;
+    }
+
+    public Integer estimatedMonthsToCompletion() {
+        BigDecimal remainingAmount = remainingAmount();
+        if (remainingAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return 0;
+        }
+        if (monthlySavingRate == null || monthlySavingRate.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return remainingAmount
+                .divide(monthlySavingRate, 0, RoundingMode.CEILING)
+                .intValue();
+    }
+
+    public LocalDate estimatedCompletionDate(LocalDate baselineDate) {
+        Integer monthsToCompletion = estimatedMonthsToCompletion();
+        if (monthsToCompletion == null || baselineDate == null) {
+            return null;
+        }
+        return baselineDate.plusMonths(monthsToCompletion);
     }
 
     public Long getId() {

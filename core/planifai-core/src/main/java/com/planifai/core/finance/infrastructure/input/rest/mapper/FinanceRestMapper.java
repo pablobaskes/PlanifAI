@@ -29,7 +29,6 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -113,9 +112,9 @@ public interface FinanceRestMapper {
                 .monthlySavingRate(toDouble(savingsGoal.getMonthlySavingRate()))
                 .notes(savingsGoal.getNotes())
                 .remainingAmount(toDouble(savingsGoal.remainingAmount()))
-                .progressPercentage(toDouble(calculateSavingsGoalProgress(savingsGoal)))
-                .estimatedMonthsToCompletion(calculateEstimatedMonthsToCompletion(savingsGoal))
-                .estimatedCompletionDate(calculateEstimatedCompletionDate(savingsGoal))
+                .progressPercentage(toDouble(savingsGoal.progressPercentage()))
+                .estimatedMonthsToCompletion(savingsGoal.estimatedMonthsToCompletion())
+                .estimatedCompletionDate(savingsGoal.estimatedCompletionDate(LocalDate.now()))
                 .createdAt(savingsGoal.getCreatedAt());
     }
 
@@ -255,35 +254,4 @@ public interface FinanceRestMapper {
                 : null;
     }
 
-    private BigDecimal calculateSavingsGoalProgress(SavingsGoal savingsGoal) {
-        if (savingsGoal.getTargetAmount() == null
-                || savingsGoal.getTargetAmount().compareTo(BigDecimal.ZERO) <= 0
-                || savingsGoal.getCurrentAmount() == null) {
-            return BigDecimal.ZERO;
-        }
-
-        BigDecimal progress = savingsGoal.getCurrentAmount()
-                .multiply(BigDecimal.valueOf(100))
-                .divide(savingsGoal.getTargetAmount(), 2, RoundingMode.HALF_UP);
-        return progress.compareTo(BigDecimal.valueOf(100)) > 0 ? BigDecimal.valueOf(100) : progress;
-    }
-
-    private Integer calculateEstimatedMonthsToCompletion(SavingsGoal savingsGoal) {
-        BigDecimal remainingAmount = savingsGoal.remainingAmount();
-        if (remainingAmount.compareTo(BigDecimal.ZERO) == 0) {
-            return 0;
-        }
-        if (savingsGoal.getMonthlySavingRate() == null
-                || savingsGoal.getMonthlySavingRate().compareTo(BigDecimal.ZERO) <= 0) {
-            return null;
-        }
-        return remainingAmount
-                .divide(savingsGoal.getMonthlySavingRate(), 0, RoundingMode.CEILING)
-                .intValue();
-    }
-
-    private LocalDate calculateEstimatedCompletionDate(SavingsGoal savingsGoal) {
-        Integer monthsToCompletion = calculateEstimatedMonthsToCompletion(savingsGoal);
-        return monthsToCompletion != null ? LocalDate.now().plusMonths(monthsToCompletion) : null;
-    }
 }

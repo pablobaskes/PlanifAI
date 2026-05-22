@@ -239,7 +239,10 @@ public class FinanceUseCase implements FinanceInputPort {
 
     @Override
     public List<SavingsGoal> getSavingsGoals() {
-        return savingsGoalOutputPort.findAll();
+        BigDecimal currentMonthlySavingRate = calculateCurrentMonthlySavingRate();
+        return savingsGoalOutputPort.findAll().stream()
+                .map(savingsGoal -> withEffectiveMonthlySavingRate(savingsGoal, currentMonthlySavingRate))
+                .toList();
     }
 
     @Override
@@ -247,8 +250,9 @@ public class FinanceUseCase implements FinanceInputPort {
         if (id == null) {
             throw new IllegalArgumentException("Savings goal id is required.");
         }
-        return savingsGoalOutputPort.findById(id)
+        SavingsGoal savingsGoal = savingsGoalOutputPort.findById(id)
                 .orElseThrow(() -> new SavingsGoalNotFoundException(id));
+        return withEffectiveMonthlySavingRate(savingsGoal, calculateCurrentMonthlySavingRate());
     }
 
     @Override
@@ -256,7 +260,8 @@ public class FinanceUseCase implements FinanceInputPort {
         validateSavingsGoal(savingsGoal);
         savingsGoal.setId(null);
         applyDerivedSavingsGoalState(savingsGoal);
-        return savingsGoalOutputPort.save(savingsGoal);
+        SavingsGoal savedSavingsGoal = savingsGoalOutputPort.save(savingsGoal);
+        return withEffectiveMonthlySavingRate(savedSavingsGoal, calculateCurrentMonthlySavingRate());
     }
 
     @Override
@@ -270,7 +275,8 @@ public class FinanceUseCase implements FinanceInputPort {
         savingsGoal.setId(id);
         savingsGoal.setCreatedAt(existingSavingsGoal.getCreatedAt());
         applyDerivedSavingsGoalState(savingsGoal);
-        return savingsGoalOutputPort.save(savingsGoal);
+        SavingsGoal savedSavingsGoal = savingsGoalOutputPort.save(savingsGoal);
+        return withEffectiveMonthlySavingRate(savedSavingsGoal, calculateCurrentMonthlySavingRate());
     }
 
     @Override
@@ -352,6 +358,34 @@ public class FinanceUseCase implements FinanceInputPort {
         if (savingsGoal.isCompleted()) {
             savingsGoal.setStatus(SavingsGoalStatus.COMPLETED);
         }
+    }
+
+    private SavingsGoal withEffectiveMonthlySavingRate(
+            SavingsGoal savingsGoal,
+            BigDecimal currentMonthlySavingRate
+    ) {
+        if (savingsGoal == null) {
+            return null;
+        }
+        if (currentMonthlySavingRate != null) {
+            savingsGoal.setMonthlySavingRate(currentMonthlySavingRate);
+        }
+        return savingsGoal;
+    }
+
+    private BigDecimal calculateCurrentMonthlySavingRate() {
+        YearMonth currentMonth = YearMonth.now();
+        LocalDate periodStart = currentMonth.atDay(1);
+        LocalDate periodEnd = currentMonth.atEndOfMonth();
+        List<Income> incomes = incomeOutputPort.findByIncomeDateBetween(periodStart, periodEnd);
+        List<Expense> expenses = expenseOutputPort.findByExpenseDateBetween(periodStart, periodEnd);
+
+        if (incomes.isEmpty() && expenses.isEmpty()) {
+            return null;
+        }
+
+        BigDecimal netSavings = sumIncomes(incomes).subtract(sumExpenses(expenses));
+        return netSavings.compareTo(BigDecimal.ZERO) > 0 ? netSavings : BigDecimal.ZERO;
     }
 
     private boolean appliesToMonth(RecurringExpense recurringExpense, YearMonth month) {
