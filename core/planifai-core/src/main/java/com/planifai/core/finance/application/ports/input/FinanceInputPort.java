@@ -7,6 +7,7 @@ import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.SavingsGoal;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -40,4 +41,14 @@ public interface FinanceInputPort {
     RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense);
 
     void deleteRecurringExpense(Long id);
+
+    List<SavingsGoal> getSavingsGoals();
+
+    SavingsGoal getSavingsGoalById(Long id);
+
+    SavingsGoal createSavingsGoal(SavingsGoal savingsGoal);
+
+    SavingsGoal updateSavingsGoal(Long id, SavingsGoal savingsGoal);
+
+    void deleteSavingsGoal(Long id);
 }

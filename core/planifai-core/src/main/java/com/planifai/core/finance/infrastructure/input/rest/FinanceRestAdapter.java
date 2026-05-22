@@ -12,12 +12,17 @@ import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
 import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
+import com.planifai.core.dto.SavingsGoalRequest;
+import com.planifai.core.dto.SavingsGoalResponse;
+import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
+import com.planifai.core.finance.application.SavingsGoalNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.SavingsGoal;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -99,6 +104,66 @@ public class FinanceRestAdapter implements FinanceApi {
             return ResponseEntity.ok(financeRestMapper.toResponse(
                     financeInputPort.getCategoryStatistics(YearMonth.parse(month))
             ));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<SavingsGoalResponse>> getSavingsGoals() {
+        return ResponseEntity.ok(financeRestMapper.toSavingsGoalResponse(financeInputPort.getSavingsGoals()));
+    }
+
+    @Override
+    public ResponseEntity<SavingsGoalResponse> createSavingsGoal(SavingsGoalRequest savingsGoalRequest) {
+        try {
+            SavingsGoal createdSavingsGoal = financeInputPort.createSavingsGoal(
+                    financeRestMapper.toDomain(savingsGoalRequest)
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdSavingsGoal));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<SavingsGoalSummaryResponse> getSavingsGoalsSummary() {
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @Override
+    public ResponseEntity<SavingsGoalResponse> getSavingsGoalById(Long id) {
+        try {
+            return ResponseEntity.ok(financeRestMapper.toResponse(financeInputPort.getSavingsGoalById(id)));
+        } catch (SavingsGoalNotFoundException exception) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<SavingsGoalResponse> updateSavingsGoal(Long id, SavingsGoalRequest savingsGoalRequest) {
+        try {
+            SavingsGoal updatedSavingsGoal = financeInputPort.updateSavingsGoal(
+                    id,
+                    financeRestMapper.toDomain(savingsGoalRequest)
+            );
+            return ResponseEntity.ok(financeRestMapper.toResponse(updatedSavingsGoal));
+        } catch (SavingsGoalNotFoundException exception) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteSavingsGoal(Long id) {
+        try {
+            financeInputPort.deleteSavingsGoal(id);
+            return ResponseEntity.noContent().build();
+        } catch (SavingsGoalNotFoundException exception) {
+            return ResponseEntity.notFound().build();
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
         }

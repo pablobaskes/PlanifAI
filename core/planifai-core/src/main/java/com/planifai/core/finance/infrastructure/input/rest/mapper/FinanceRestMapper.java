@@ -12,6 +12,8 @@ import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
 import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
+import com.planifai.core.dto.SavingsGoalRequest;
+import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
@@ -21,11 +23,14 @@ import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.SavingsGoal;
 import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -78,6 +83,43 @@ public interface FinanceRestMapper {
     }
 
     List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses);
+
+    default SavingsGoal toDomain(SavingsGoalRequest request) {
+        if (request == null) {
+            return null;
+        }
+
+        SavingsGoal savingsGoal = new SavingsGoal();
+        savingsGoal.setName(request.getName());
+        savingsGoal.setTargetAmount(toBigDecimal(request.getTargetAmount()));
+        savingsGoal.setCurrentAmount(toBigDecimal(request.getCurrentAmount()));
+        savingsGoal.setTargetDate(request.getTargetDate());
+        savingsGoal.setCategory(toDomain(request.getCategory()));
+        savingsGoal.setStatus(toDomain(request.getStatus()));
+        savingsGoal.setMonthlySavingRate(toBigDecimal(request.getMonthlySavingRate()));
+        savingsGoal.setNotes(request.getNotes());
+        return savingsGoal;
+    }
+
+    default SavingsGoalResponse toResponse(SavingsGoal savingsGoal) {
+        return new SavingsGoalResponse()
+                .id(savingsGoal.getId())
+                .name(savingsGoal.getName())
+                .targetAmount(toDouble(savingsGoal.getTargetAmount()))
+                .currentAmount(toDouble(savingsGoal.getCurrentAmount()))
+                .targetDate(savingsGoal.getTargetDate())
+                .category(toResponse(savingsGoal.getCategory()))
+                .status(toResponse(savingsGoal.getStatus()))
+                .monthlySavingRate(toDouble(savingsGoal.getMonthlySavingRate()))
+                .notes(savingsGoal.getNotes())
+                .remainingAmount(toDouble(savingsGoal.remainingAmount()))
+                .progressPercentage(toDouble(calculateSavingsGoalProgress(savingsGoal)))
+                .estimatedMonthsToCompletion(calculateEstimatedMonthsToCompletion(savingsGoal))
+                .estimatedCompletionDate(calculateEstimatedCompletionDate(savingsGoal))
+                .createdAt(savingsGoal.getCreatedAt());
+    }
+
+    List<SavingsGoalResponse> toSavingsGoalResponse(List<SavingsGoal> savingsGoals);
 
     default MonthlyObligationsSummaryResponse toResponse(MonthlyObligationsSummary summary) {
         return new MonthlyObligationsSummaryResponse()
@@ -179,5 +221,69 @@ public interface FinanceRestMapper {
         return recurrence != null
                 ? com.planifai.core.dto.Recurrence.valueOf(recurrence.name())
                 : null;
+    }
+
+    private com.planifai.core.finance.domain.model.SavingsGoalCategory toDomain(
+            com.planifai.core.dto.SavingsGoalCategory category
+    ) {
+        return category != null
+                ? com.planifai.core.finance.domain.model.SavingsGoalCategory.valueOf(category.name())
+                : null;
+    }
+
+    private com.planifai.core.dto.SavingsGoalCategory toResponse(
+            com.planifai.core.finance.domain.model.SavingsGoalCategory category
+    ) {
+        return category != null
+                ? com.planifai.core.dto.SavingsGoalCategory.valueOf(category.name())
+                : null;
+    }
+
+    private com.planifai.core.finance.domain.model.SavingsGoalStatus toDomain(
+            com.planifai.core.dto.SavingsGoalStatus status
+    ) {
+        return status != null
+                ? com.planifai.core.finance.domain.model.SavingsGoalStatus.valueOf(status.name())
+                : null;
+    }
+
+    private com.planifai.core.dto.SavingsGoalStatus toResponse(
+            com.planifai.core.finance.domain.model.SavingsGoalStatus status
+    ) {
+        return status != null
+                ? com.planifai.core.dto.SavingsGoalStatus.valueOf(status.name())
+                : null;
+    }
+
+    private BigDecimal calculateSavingsGoalProgress(SavingsGoal savingsGoal) {
+        if (savingsGoal.getTargetAmount() == null
+                || savingsGoal.getTargetAmount().compareTo(BigDecimal.ZERO) <= 0
+                || savingsGoal.getCurrentAmount() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal progress = savingsGoal.getCurrentAmount()
+                .multiply(BigDecimal.valueOf(100))
+                .divide(savingsGoal.getTargetAmount(), 2, RoundingMode.HALF_UP);
+        return progress.compareTo(BigDecimal.valueOf(100)) > 0 ? BigDecimal.valueOf(100) : progress;
+    }
+
+    private Integer calculateEstimatedMonthsToCompletion(SavingsGoal savingsGoal) {
+        BigDecimal remainingAmount = savingsGoal.remainingAmount();
+        if (remainingAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return 0;
+        }
+        if (savingsGoal.getMonthlySavingRate() == null
+                || savingsGoal.getMonthlySavingRate().compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return remainingAmount
+                .divide(savingsGoal.getMonthlySavingRate(), 0, RoundingMode.CEILING)
+                .intValue();
+    }
+
+    private LocalDate calculateEstimatedCompletionDate(SavingsGoal savingsGoal) {
+        Integer monthsToCompletion = calculateEstimatedMonthsToCompletion(savingsGoal);
+        return monthsToCompletion != null ? LocalDate.now().plusMonths(monthsToCompletion) : null;
     }
 }

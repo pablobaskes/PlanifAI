@@ -196,6 +196,130 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceCategoryStatisticsResponse'
+  /api/finance/savings-goals:
+    get:
+      tags:
+        - Finance
+      operationId: getSavingsGoals
+      summary: List savings goals
+      description: Lists medium and long-term savings goals tracked manually in PlanifAI. This endpoint does not create investment products, simulate interest, synchronize bank accounts, or manage shared goals.
+      responses:
+        '200':
+          description: Savings goals returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavingsGoalResponse'
+    post:
+      tags:
+        - Finance
+      operationId: createSavingsGoal
+      summary: Create savings goal
+      description: Creates a manually tracked savings goal. The goal is informational only and does not trigger investments, interest simulations, shared goal flows, or banking integrations.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavingsGoalRequest'
+      responses:
+        '201':
+          description: Savings goal created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalResponse'
+  /api/finance/savings-goals/summary:
+    get:
+      tags:
+        - Finance
+      operationId: getSavingsGoalsSummary
+      summary: Get savings goals summary
+      description: Returns aggregate savings goal progress and ETA planning data. Calculations are informational only and exclude investment products, interest simulations, shared goals, and banking integrations.
+      responses:
+        '200':
+          description: Savings goals summary returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalSummaryResponse'
+  /api/finance/savings-goals/{id}:
+    get:
+      tags:
+        - Finance
+      operationId: getSavingsGoalById
+      summary: Get savings goal by id
+      description: Returns a manually tracked savings goal with progress and ETA fields.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Savings goal identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Savings goal returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalResponse'
+        '404':
+          description: Savings goal not found.
+    put:
+      tags:
+        - Finance
+      operationId: updateSavingsGoal
+      summary: Update savings goal
+      description: Updates a manually tracked savings goal. This does not trigger investments, interest simulations, shared goal flows, or banking integrations.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Savings goal identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SavingsGoalRequest'
+      responses:
+        '200':
+          description: Savings goal updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavingsGoalResponse'
+        '404':
+          description: Savings goal not found.
+    delete:
+      tags:
+        - Finance
+      operationId: deleteSavingsGoal
+      summary: Delete savings goal
+      description: Deletes a manually tracked savings goal from PlanifAI. This does not affect bank accounts, investments, or shared goals.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Savings goal identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Savings goal deleted.
+        '404':
+          description: Savings goal not found.
   /api/finance/recurring-expenses:
     get:
       tags:
@@ -413,6 +537,14 @@ components:
     FinancialHealthStatus:
       type: string
       enum: [GOOD, WARNING, BAD, NO_DATA]
+    SavingsGoalCategory:
+      type: string
+      description: Backend-controlled savings goal category. User-created dynamic categories are intentionally deferred.
+      enum: [EMERGENCY_FUND, TRAVEL, ELECTRONICS, CAR, HOME, EDUCATION, OTHER]
+    SavingsGoalStatus:
+      type: string
+      description: Lifecycle status for a manually tracked savings goal.
+      enum: [ACTIVE, COMPLETED, PAUSED, CANCELLED]
     ExpenseCategoryBreakdown:
       type: object
       required: [category, totalAmount, percentage]
@@ -477,6 +609,164 @@ components:
           description: Expense totals grouped by category. Empty months return an empty array.
           items:
             $ref: '#/components/schemas/ExpenseCategoryBreakdown'
+    SavingsGoalRequest:
+      type: object
+      description: Manual savings goal definition. This DTO does not represent an investment product, interest-bearing account, shared goal, or banking integration.
+      required: [name, targetAmount, currentAmount, category, status]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+          description: Human-readable savings goal name, such as travel, emergency fund, electronics, car, or home improvements.
+        targetAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Target amount the user wants to save.
+        currentAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Current amount already saved toward the target.
+        targetDate:
+          type: string
+          format: date
+          description: Optional date by which the user would like to complete the goal.
+        category:
+          $ref: '#/components/schemas/SavingsGoalCategory'
+        status:
+          $ref: '#/components/schemas/SavingsGoalStatus'
+        monthlySavingRate:
+          type: number
+          format: double
+          minimum: 0
+          description: Optional monthly saving amount used for ETA planning. It may later be calculated from user activity.
+        notes:
+          type: string
+          maxLength: 1000
+          description: Optional user notes. Notes must not be interpreted as investment or banking instructions.
+    SavingsGoalResponse:
+      allOf:
+        - $ref: '#/components/schemas/SavingsGoalRequest'
+        - type: object
+          required:
+            - id
+            - remainingAmount
+            - progressPercentage
+            - monthlySavingRate
+            - estimatedMonthsToCompletion
+            - createdAt
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Savings goal identifier.
+            remainingAmount:
+              type: number
+              format: double
+              minimum: 0
+              description: Remaining amount to reach the target. Completed or over-funded goals return 0.
+            progressPercentage:
+              type: number
+              format: double
+              minimum: 0
+              maximum: 100
+              description: Current progress toward targetAmount, capped at 100 for completed or over-funded goals.
+            estimatedMonthsToCompletion:
+              type: integer
+              format: int32
+              minimum: 0
+              nullable: true
+              description: Estimated whole months until completion using monthlySavingRate. Null means ETA cannot be calculated yet.
+            estimatedCompletionDate:
+              type: string
+              format: date
+              nullable: true
+              description: Estimated completion date based on monthlySavingRate. Null means ETA cannot be calculated yet.
+            createdAt:
+              type: string
+              format: date-time
+              description: Creation timestamp.
+    SavingsGoalSummaryResponse:
+      type: object
+      description: Aggregate savings goals progress and ETA summary for dashboard widgets. This summary excludes investments, interest simulations, shared goals, and banking integrations.
+      required:
+        - totalGoals
+        - activeGoals
+        - completedGoals
+        - pausedGoals
+        - cancelledGoals
+        - totalTargetAmount
+        - totalCurrentAmount
+        - totalRemainingAmount
+        - overallProgressPercentage
+        - monthlySavingRate
+        - estimatedMonthsToCompletion
+      properties:
+        totalGoals:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Total number of savings goals.
+        activeGoals:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of active savings goals.
+        completedGoals:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of completed savings goals.
+        pausedGoals:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of paused savings goals.
+        cancelledGoals:
+          type: integer
+          format: int32
+          minimum: 0
+          description: Number of cancelled savings goals.
+        totalTargetAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of target amounts across tracked savings goals.
+        totalCurrentAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of current saved amounts across tracked savings goals.
+        totalRemainingAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum still needed to complete all non-cancelled savings goals.
+        overallProgressPercentage:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Aggregate progress percentage across tracked savings goals.
+        monthlySavingRate:
+          type: number
+          format: double
+          minimum: 0
+          description: Aggregate monthly saving amount used for ETA planning.
+        estimatedMonthsToCompletion:
+          type: integer
+          format: int32
+          minimum: 0
+          nullable: true
+          description: Estimated months to complete all active savings goals. Null means ETA cannot be calculated yet.
+        estimatedCompletionDate:
+          type: string
+          format: date
+          nullable: true
+          description: Estimated date to complete all active savings goals. Null means ETA cannot be calculated yet.
     RecurringExpenseRequest:
       type: object
       description: Manually managed recurring expense or financial obligation. This DTO never represents an automatic payment instruction or bank synchronization mandate.

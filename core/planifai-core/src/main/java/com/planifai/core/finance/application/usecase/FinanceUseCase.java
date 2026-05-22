@@ -1,10 +1,12 @@
 package com.planifai.core.finance.application.usecase;
 
 import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
+import com.planifai.core.finance.application.SavingsGoalNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
+import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.FinanceDashboard;
@@ -19,6 +21,8 @@ import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
 import com.planifai.core.finance.domain.model.Recurrence;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.SavingsGoalStatus;
 import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.springframework.stereotype.Service;
 
@@ -37,15 +41,18 @@ public class FinanceUseCase implements FinanceInputPort {
     private final ExpenseOutputPort expenseOutputPort;
     private final IncomeOutputPort incomeOutputPort;
     private final RecurringExpenseOutputPort recurringExpenseOutputPort;
+    private final SavingsGoalOutputPort savingsGoalOutputPort;
 
     public FinanceUseCase(
             ExpenseOutputPort expenseOutputPort,
             IncomeOutputPort incomeOutputPort,
-            RecurringExpenseOutputPort recurringExpenseOutputPort
+            RecurringExpenseOutputPort recurringExpenseOutputPort,
+            SavingsGoalOutputPort savingsGoalOutputPort
     ) {
         this.expenseOutputPort = expenseOutputPort;
         this.incomeOutputPort = incomeOutputPort;
         this.recurringExpenseOutputPort = recurringExpenseOutputPort;
+        this.savingsGoalOutputPort = savingsGoalOutputPort;
     }
 
     @Override
@@ -230,6 +237,53 @@ public class FinanceUseCase implements FinanceInputPort {
         recurringExpenseOutputPort.deleteById(id);
     }
 
+    @Override
+    public List<SavingsGoal> getSavingsGoals() {
+        return savingsGoalOutputPort.findAll();
+    }
+
+    @Override
+    public SavingsGoal getSavingsGoalById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Savings goal id is required.");
+        }
+        return savingsGoalOutputPort.findById(id)
+                .orElseThrow(() -> new SavingsGoalNotFoundException(id));
+    }
+
+    @Override
+    public SavingsGoal createSavingsGoal(SavingsGoal savingsGoal) {
+        validateSavingsGoal(savingsGoal);
+        savingsGoal.setId(null);
+        applyDerivedSavingsGoalState(savingsGoal);
+        return savingsGoalOutputPort.save(savingsGoal);
+    }
+
+    @Override
+    public SavingsGoal updateSavingsGoal(Long id, SavingsGoal savingsGoal) {
+        if (id == null) {
+            throw new IllegalArgumentException("Savings goal id is required.");
+        }
+        SavingsGoal existingSavingsGoal = savingsGoalOutputPort.findById(id)
+                .orElseThrow(() -> new SavingsGoalNotFoundException(id));
+        validateSavingsGoal(savingsGoal);
+        savingsGoal.setId(id);
+        savingsGoal.setCreatedAt(existingSavingsGoal.getCreatedAt());
+        applyDerivedSavingsGoalState(savingsGoal);
+        return savingsGoalOutputPort.save(savingsGoal);
+    }
+
+    @Override
+    public void deleteSavingsGoal(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("Savings goal id is required.");
+        }
+        if (savingsGoalOutputPort.findById(id).isEmpty()) {
+            throw new SavingsGoalNotFoundException(id);
+        }
+        savingsGoalOutputPort.deleteById(id);
+    }
+
     private void validateExpense(Expense expense) {
         if (expense == null) {
             throw new IllegalArgumentException("Expense is required.");
@@ -284,6 +338,19 @@ public class FinanceUseCase implements FinanceInputPort {
         if (recurringExpense.getEndDate() != null
                 && recurringExpense.getEndDate().isBefore(recurringExpense.getStartDate())) {
             throw new IllegalArgumentException("Recurring expense end date cannot be before start date.");
+        }
+    }
+
+    private void validateSavingsGoal(SavingsGoal savingsGoal) {
+        if (savingsGoal == null) {
+            throw new IllegalArgumentException("Savings goal is required.");
+        }
+        savingsGoal.validate();
+    }
+
+    private void applyDerivedSavingsGoalState(SavingsGoal savingsGoal) {
+        if (savingsGoal.isCompleted()) {
+            savingsGoal.setStatus(SavingsGoalStatus.COMPLETED);
         }
     }
 
