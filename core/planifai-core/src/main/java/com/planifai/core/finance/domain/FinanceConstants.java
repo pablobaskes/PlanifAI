@@ -6,6 +6,7 @@ public final class FinanceConstants {
 
     public static final BigDecimal MAX_PERCENTAGE = BigDecimal.valueOf(100);
     public static final BigDecimal GOOD_SAVINGS_RATE_THRESHOLD = BigDecimal.valueOf(20);
+    public static final BigDecimal BUDGET_WARNING_PERCENTAGE = BigDecimal.valueOf(80);
     public static final int MIN_PAYMENT_DAY = 1;
     public static final int MAX_PAYMENT_DAY = 31;
 

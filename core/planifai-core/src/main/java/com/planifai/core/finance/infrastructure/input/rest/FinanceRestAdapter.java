@@ -205,8 +205,9 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<BudgetSummaryResponse> getFinanceBudgetSummary(String month) {
-        parseMonth(month);
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        return ResponseEntity.ok(financeRestMapper.toResponse(
+                financeInputPort.getBudgetSummary(parseMonth(month))
+        ));
     }
 
     private String toCategoryLabel(FinanceCategory category) {

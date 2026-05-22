@@ -2,6 +2,7 @@ package com.planifai.core.finance.infrastructure.input.rest.mapper;
 
 import com.planifai.core.dto.BudgetRequest;
 import com.planifai.core.dto.BudgetResponse;
+import com.planifai.core.dto.BudgetSummaryResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -20,6 +21,9 @@ import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.FinanceConstants;
 import com.planifai.core.finance.domain.model.budget.Budget;
+import com.planifai.core.finance.domain.model.budget.BudgetAlert;
+import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetSummary;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
@@ -126,6 +130,47 @@ public interface FinanceRestMapper {
     }
 
     List<BudgetResponse> toBudgetResponse(List<Budget> budgets);
+
+    default BudgetSummaryResponse toResponse(BudgetSummary summary) {
+        return new BudgetSummaryResponse()
+                .month(summary.month().toString())
+                .totalLimitAmount(toDouble(summary.totalLimitAmount()))
+                .totalConsumedAmount(toDouble(summary.totalConsumedAmount()))
+                .totalRemainingAmount(toDouble(summary.totalRemainingAmount()))
+                .totalOverspentAmount(toDouble(summary.totalOverspentAmount()))
+                .overallConsumptionPercentage(toDouble(summary.overallConsumptionPercentage()))
+                .status(com.planifai.core.dto.BudgetStatus.valueOf(summary.status().name()))
+                .categories(summary.categories().stream()
+                        .map(this::toResponse)
+                        .toList())
+                .alerts(summary.alerts().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default com.planifai.core.dto.BudgetCategoryStatus toResponse(BudgetCategoryStatus categoryStatus) {
+        return new com.planifai.core.dto.BudgetCategoryStatus()
+                .budgetId(categoryStatus.budgetId())
+                .category(toResponse(categoryStatus.category()))
+                .limitAmount(toDouble(categoryStatus.limitAmount()))
+                .consumedAmount(toDouble(categoryStatus.consumedAmount()))
+                .remainingAmount(toDouble(categoryStatus.remainingAmount()))
+                .overspentAmount(toDouble(categoryStatus.overspentAmount()))
+                .consumptionPercentage(toDouble(categoryStatus.consumptionPercentage()))
+                .status(com.planifai.core.dto.BudgetStatus.valueOf(categoryStatus.status().name()))
+                .alerts(categoryStatus.alerts().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default com.planifai.core.dto.BudgetAlert toResponse(BudgetAlert alert) {
+        return new com.planifai.core.dto.BudgetAlert()
+                .type(com.planifai.core.dto.BudgetAlertType.valueOf(alert.type().name()))
+                .status(com.planifai.core.dto.BudgetStatus.valueOf(alert.status().name()))
+                .category(toResponse(alert.category()))
+                .thresholdPercentage(toDouble(alert.thresholdPercentage()))
+                .message(alert.message());
+    }
 
     default SavingsGoal toDomain(SavingsGoalRequest request) {
         if (request == null) {

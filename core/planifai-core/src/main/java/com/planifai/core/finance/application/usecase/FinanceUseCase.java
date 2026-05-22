@@ -10,6 +10,11 @@ import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
 import com.planifai.core.finance.domain.model.budget.Budget;
+import com.planifai.core.finance.domain.model.budget.BudgetAlert;
+import com.planifai.core.finance.domain.model.budget.BudgetAlertType;
+import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetSummary;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
@@ -242,6 +247,59 @@ public class FinanceUseCase implements FinanceInputPort {
     }
 
     @Override
+    public BudgetSummary getBudgetSummary(YearMonth month) {
+        if (month == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_MONTH_REQUIRED);
+        }
+
+        List<Budget> activeBudgets = budgetOutputPort.findByMonthAndActive(month, true);
+        LocalDate periodStart = month.atDay(1);
+        LocalDate periodEnd = month.atEndOfMonth();
+        Map<ExpenseCategory, BigDecimal> expensesByCategory = expenseOutputPort
+                .findByExpenseDateBetween(periodStart, periodEnd)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        expense -> expense.getCategory() != null ? expense.getCategory() : ExpenseCategory.OTHER,
+                        Collectors.mapping(
+                                expense -> expense.getAmount() != null ? expense.getAmount() : BigDecimal.ZERO,
+                                Collectors.reducing(BigDecimal.ZERO, BigDecimal::add)
+                        )
+                ));
+
+        List<BudgetCategoryStatus> categories = activeBudgets.stream()
+                .map(budget -> toBudgetCategoryStatus(budget, expensesByCategory))
+                .sorted(Comparator
+                        .comparing(BudgetCategoryStatus::category)
+                        .thenComparing(BudgetCategoryStatus::budgetId, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+
+        BigDecimal totalLimitAmount = sumBudgetLimits(categories);
+        BigDecimal totalConsumedAmount = sumBudgetConsumed(categories);
+        BigDecimal totalRemainingAmount = sumBudgetRemaining(categories);
+        BigDecimal totalOverspentAmount = sumBudgetOverspent(categories);
+        BigDecimal overallConsumptionPercentage = calculateBudgetConsumptionPercentage(
+                totalConsumedAmount,
+                totalLimitAmount
+        );
+        BudgetStatus status = calculateBudgetStatus(overallConsumptionPercentage);
+        List<BudgetAlert> alerts = categories.stream()
+                .flatMap(category -> category.alerts().stream())
+                .toList();
+
+        return BudgetSummary.builder()
+                .month(month)
+                .totalLimitAmount(totalLimitAmount)
+                .totalConsumedAmount(totalConsumedAmount)
+                .totalRemainingAmount(totalRemainingAmount)
+                .totalOverspentAmount(totalOverspentAmount)
+                .overallConsumptionPercentage(overallConsumptionPercentage)
+                .status(status)
+                .categories(categories)
+                .alerts(alerts)
+                .build();
+    }
+
+    @Override
     public Budget getBudgetById(Long id) {
         if (id == null) {
             throw new IllegalArgumentException(FinanceConstants.BUDGET_ID_REQUIRED);
@@ -460,6 +518,109 @@ public class FinanceUseCase implements FinanceInputPort {
                 )) {
             throw new IllegalArgumentException(FinanceConstants.BUDGET_ACTIVE_DUPLICATE);
         }
+    }
+
+    private BudgetCategoryStatus toBudgetCategoryStatus(
+            Budget budget,
+            Map<ExpenseCategory, BigDecimal> expensesByCategory
+    ) {
+        BigDecimal limitAmount = budget.getLimitAmount() != null ? budget.getLimitAmount() : BigDecimal.ZERO;
+        BigDecimal consumedAmount = expensesByCategory.getOrDefault(budget.getCategory(), BigDecimal.ZERO);
+        BigDecimal difference = limitAmount.subtract(consumedAmount);
+        BigDecimal remainingAmount = difference.compareTo(BigDecimal.ZERO) > 0 ? difference : BigDecimal.ZERO;
+        BigDecimal overspentAmount = difference.compareTo(BigDecimal.ZERO) < 0
+                ? consumedAmount.subtract(limitAmount)
+                : BigDecimal.ZERO;
+        BigDecimal consumptionPercentage = calculateBudgetConsumptionPercentage(consumedAmount, limitAmount);
+        BudgetStatus status = calculateBudgetStatus(consumptionPercentage);
+
+        return BudgetCategoryStatus.builder()
+                .budgetId(budget.getId())
+                .category(budget.getCategory())
+                .limitAmount(limitAmount)
+                .consumedAmount(consumedAmount)
+                .remainingAmount(remainingAmount)
+                .overspentAmount(overspentAmount)
+                .consumptionPercentage(consumptionPercentage)
+                .status(status)
+                .alerts(buildBudgetAlerts(budget.getCategory(), consumptionPercentage, status))
+                .build();
+    }
+
+    private BigDecimal calculateBudgetConsumptionPercentage(BigDecimal consumedAmount, BigDecimal limitAmount) {
+        if (limitAmount == null || limitAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal safeConsumedAmount = consumedAmount != null ? consumedAmount : BigDecimal.ZERO;
+        return safeConsumedAmount
+                .multiply(FinanceConstants.MAX_PERCENTAGE)
+                .divide(limitAmount, 2, RoundingMode.HALF_UP);
+    }
+
+    private BudgetStatus calculateBudgetStatus(BigDecimal consumptionPercentage) {
+        if (consumptionPercentage.compareTo(FinanceConstants.MAX_PERCENTAGE) > 0) {
+            return BudgetStatus.EXCEEDED;
+        }
+        if (consumptionPercentage.compareTo(FinanceConstants.BUDGET_WARNING_PERCENTAGE) >= 0) {
+            return BudgetStatus.WARNING;
+        }
+        return BudgetStatus.OK;
+    }
+
+    private List<BudgetAlert> buildBudgetAlerts(
+            ExpenseCategory category,
+            BigDecimal consumptionPercentage,
+            BudgetStatus status
+    ) {
+        if (status == BudgetStatus.OK) {
+            return List.of();
+        }
+
+        BudgetAlertType type = status == BudgetStatus.EXCEEDED
+                ? BudgetAlertType.BUDGET_EXCEEDED
+                : BudgetAlertType.WARNING_THRESHOLD;
+        BigDecimal threshold = status == BudgetStatus.EXCEEDED
+                ? FinanceConstants.MAX_PERCENTAGE
+                : FinanceConstants.BUDGET_WARNING_PERCENTAGE;
+        String message = status == BudgetStatus.EXCEEDED
+                ? "Budget exceeded for category " + category.name() + "."
+                : "Budget warning threshold reached for category " + category.name() + ".";
+
+        return List.of(BudgetAlert.builder()
+                .type(type)
+                .status(status)
+                .category(category)
+                .thresholdPercentage(threshold)
+                .message(message)
+                .build());
+    }
+
+    private BigDecimal sumBudgetLimits(List<BudgetCategoryStatus> categories) {
+        return categories.stream()
+                .map(BudgetCategoryStatus::limitAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumBudgetConsumed(List<BudgetCategoryStatus> categories) {
+        return categories.stream()
+                .map(BudgetCategoryStatus::consumedAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumBudgetRemaining(List<BudgetCategoryStatus> categories) {
+        return categories.stream()
+                .map(BudgetCategoryStatus::remainingAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumBudgetOverspent(List<BudgetCategoryStatus> categories) {
+        return categories.stream()
+                .map(BudgetCategoryStatus::overspentAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void applyDerivedSavingsGoalState(SavingsGoal savingsGoal) {
