@@ -1,12 +1,15 @@
 package com.planifai.core.finance.application.usecase;
 
+import com.planifai.core.finance.domain.exception.BudgetNotFoundException;
 import com.planifai.core.finance.domain.exception.RecurringExpenseNotFoundException;
 import com.planifai.core.finance.domain.exception.SavingsGoalNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
+import com.planifai.core.finance.application.ports.output.BudgetOutputPort;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
+import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
@@ -46,6 +49,7 @@ public class FinanceUseCase implements FinanceInputPort {
     private final IncomeOutputPort incomeOutputPort;
     private final RecurringExpenseOutputPort recurringExpenseOutputPort;
     private final SavingsGoalOutputPort savingsGoalOutputPort;
+    private final BudgetOutputPort budgetOutputPort;
 
     @Override
     public List<Expense> getExpenses() {
@@ -230,6 +234,58 @@ public class FinanceUseCase implements FinanceInputPort {
     }
 
     @Override
+    public List<Budget> getBudgets(YearMonth month) {
+        if (month == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_MONTH_REQUIRED);
+        }
+        return budgetOutputPort.findByMonth(month);
+    }
+
+    @Override
+    public Budget getBudgetById(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_ID_REQUIRED);
+        }
+        return budgetOutputPort.findById(id)
+                .orElseThrow(() -> new BudgetNotFoundException(id));
+    }
+
+    @Override
+    public Budget createBudget(Budget budget) {
+        validateBudget(budget);
+        budget.setId(null);
+        applyBudgetDefaults(budget);
+        validateActiveBudgetIsUnique(budget);
+        return budgetOutputPort.save(budget);
+    }
+
+    @Override
+    public Budget updateBudget(Long id, Budget budget) {
+        if (id == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_ID_REQUIRED);
+        }
+        if (budgetOutputPort.findById(id).isEmpty()) {
+            throw new BudgetNotFoundException(id);
+        }
+        validateBudget(budget);
+        budget.setId(id);
+        applyBudgetDefaults(budget);
+        validateActiveBudgetIsUnique(budget);
+        return budgetOutputPort.save(budget);
+    }
+
+    @Override
+    public void deleteBudget(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_ID_REQUIRED);
+        }
+        if (budgetOutputPort.findById(id).isEmpty()) {
+            throw new BudgetNotFoundException(id);
+        }
+        budgetOutputPort.deleteById(id);
+    }
+
+    @Override
     public List<SavingsGoal> getSavingsGoals() {
         BigDecimal currentMonthlySavingRate = calculateCurrentMonthlySavingRate();
         return savingsGoalOutputPort.findAll().stream()
@@ -380,6 +436,30 @@ public class FinanceUseCase implements FinanceInputPort {
             throw new IllegalArgumentException(FinanceConstants.SAVINGS_GOAL_REQUIRED);
         }
         savingsGoal.validate();
+    }
+
+    private void validateBudget(Budget budget) {
+        if (budget == null) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_REQUIRED);
+        }
+        budget.validate();
+    }
+
+    private void applyBudgetDefaults(Budget budget) {
+        if (budget.getActive() == null) {
+            budget.setActive(Boolean.TRUE);
+        }
+    }
+
+    private void validateActiveBudgetIsUnique(Budget budget) {
+        if (Boolean.TRUE.equals(budget.getActive())
+                && budgetOutputPort.existsActiveByMonthAndCategoryExcludingId(
+                        budget.getMonth(),
+                        budget.getCategory(),
+                        budget.getId()
+                )) {
+            throw new IllegalArgumentException(FinanceConstants.BUDGET_ACTIVE_DUPLICATE);
+        }
     }
 
     private void applyDerivedSavingsGoalState(SavingsGoal savingsGoal) {

@@ -196,6 +196,148 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FinanceCategoryStatisticsResponse'
+  /api/finance/budgets:
+    get:
+      tags:
+        - Finance
+      operationId: getFinanceBudgets
+      summary: List monthly category budgets
+      description: Lists manually managed category budgets for a month. Budgets are planning records only and do not synchronize bank accounts, trigger payments, send push notifications, or perform AI categorization.
+      parameters:
+        - name: month
+          in: query
+          required: true
+          description: Month to list using YYYY-MM format.
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-05'
+      responses:
+        '200':
+          description: Monthly budgets returned.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BudgetResponse'
+    post:
+      tags:
+        - Finance
+      operationId: createFinanceBudget
+      summary: Create monthly category budget
+      description: Creates a manually tracked monthly budget for a backend-controlled finance category. This endpoint does not create banking rules, push notifications, or automatic categorization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetRequest'
+      responses:
+        '201':
+          description: Budget created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+  /api/finance/budgets/summary:
+    get:
+      tags:
+        - Finance
+      operationId: getFinanceBudgetSummary
+      summary: Get monthly budget summary
+      description: Returns monthly budget consumption grouped by category. Summary values are computed from manually tracked budgets and finance expenses only; no bank synchronization, push alerts, or AI categorization are triggered.
+      parameters:
+        - name: month
+          in: query
+          required: true
+          description: Month to summarize using YYYY-MM format.
+          schema:
+            type: string
+            pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+            example: '2026-05'
+      responses:
+        '200':
+          description: Monthly budget summary returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetSummaryResponse'
+  /api/finance/budgets/{id}:
+    get:
+      tags:
+        - Finance
+      operationId: getFinanceBudgetById
+      summary: Get budget by id
+      description: Returns a manually tracked monthly category budget with computed consumption fields.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Budget identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '200':
+          description: Budget returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '404':
+          description: Budget not found.
+    put:
+      tags:
+        - Finance
+      operationId: updateFinanceBudget
+      summary: Update budget
+      description: Updates a manually tracked monthly category budget. This does not affect bank accounts, notifications, or AI categorization.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Budget identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BudgetRequest'
+      responses:
+        '200':
+          description: Budget updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetResponse'
+        '404':
+          description: Budget not found.
+    delete:
+      tags:
+        - Finance
+      operationId: deleteFinanceBudget
+      summary: Delete budget
+      description: Deletes a manually tracked monthly category budget. This does not delete expenses or change banking data.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Budget identifier.
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+      responses:
+        '204':
+          description: Budget deleted.
+        '404':
+          description: Budget not found.
   /api/finance/savings-goals:
     get:
       tags:
@@ -534,6 +676,14 @@ components:
       type: string
       description: Manual projection status for an upcoming obligation. PAID_OR_REGISTERED means the user has registered or marked the obligation, not that PlanifAI executed a payment.
       enum: [PENDING, PAID_OR_REGISTERED]
+    BudgetStatus:
+      type: string
+      description: Budget consumption status for a monthly category budget.
+      enum: [OK, WARNING, EXCEEDED]
+    BudgetAlertType:
+      type: string
+      description: Informational budget alert type. Alerts are returned in API responses only and do not represent push notifications or external messages.
+      enum: [WARNING_THRESHOLD, BUDGET_EXCEEDED]
     FinancialHealthStatus:
       type: string
       enum: [GOOD, WARNING, BAD, NO_DATA]
@@ -609,6 +759,204 @@ components:
           description: Expense totals grouped by category. Empty months return an empty array.
           items:
             $ref: '#/components/schemas/ExpenseCategoryBreakdown'
+    BudgetRequest:
+      type: object
+      description: Manual monthly budget definition for one backend-controlled finance category. This DTO does not create bank rules, push notifications, or AI categorization instructions.
+      required: [month, category, limitAmount, active]
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Budget month using YYYY-MM format.
+          example: '2026-05'
+        category:
+          $ref: '#/components/schemas/FinanceCategory'
+        limitAmount:
+          type: number
+          format: double
+          minimum: 0
+          exclusiveMinimum: true
+          description: Maximum planned spend for the category in the selected month.
+        active:
+          type: boolean
+          description: Whether this budget should be included in monthly summary calculations.
+        notes:
+          type: string
+          maxLength: 1000
+          description: Optional user notes for manual budgeting context.
+    BudgetAlert:
+      type: object
+      description: Informational alert computed from budget consumption. Alerts are response data only; no push notification or external delivery is implied.
+      required: [type, status, message]
+      properties:
+        type:
+          $ref: '#/components/schemas/BudgetAlertType'
+        status:
+          $ref: '#/components/schemas/BudgetStatus'
+        category:
+          $ref: '#/components/schemas/FinanceCategory'
+        thresholdPercentage:
+          type: number
+          format: double
+          minimum: 0
+          maximum: 100
+          description: Threshold that produced the alert when applicable.
+        message:
+          type: string
+          maxLength: 300
+          description: Human-readable alert message for UI display.
+    BudgetResponse:
+      allOf:
+        - $ref: '#/components/schemas/BudgetRequest'
+        - type: object
+          required:
+            - id
+            - consumedAmount
+            - remainingAmount
+            - overspentAmount
+            - consumptionPercentage
+            - status
+            - alerts
+          properties:
+            id:
+              type: integer
+              format: int64
+              description: Budget identifier.
+            consumedAmount:
+              type: number
+              format: double
+              minimum: 0
+              description: Expenses consumed for this category in the budget month.
+            remainingAmount:
+              type: number
+              format: double
+              minimum: 0
+              description: Remaining amount before reaching limitAmount. Exceeded budgets return 0.
+            overspentAmount:
+              type: number
+              format: double
+              minimum: 0
+              description: Amount above limitAmount. Non-exceeded budgets return 0.
+            consumptionPercentage:
+              type: number
+              format: double
+              minimum: 0
+              description: Percentage of limitAmount consumed by expenses in this category.
+            status:
+              $ref: '#/components/schemas/BudgetStatus'
+            alerts:
+              type: array
+              description: Informational alerts for this budget. Empty when no warning or exceeded condition exists.
+              items:
+                $ref: '#/components/schemas/BudgetAlert'
+    BudgetCategoryStatus:
+      type: object
+      description: Computed monthly budget status for one category. Values are derived from manually tracked expenses and budgets.
+      required:
+        - category
+        - limitAmount
+        - consumedAmount
+        - remainingAmount
+        - overspentAmount
+        - consumptionPercentage
+        - status
+        - alerts
+      properties:
+        budgetId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Source budget identifier when a budget exists for this category.
+        category:
+          $ref: '#/components/schemas/FinanceCategory'
+        limitAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Configured monthly limit for the category.
+        consumedAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Expenses consumed for this category in the selected month.
+        remainingAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Remaining amount before reaching limitAmount. Exceeded categories return 0.
+        overspentAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Amount above limitAmount. Non-exceeded categories return 0.
+        consumptionPercentage:
+          type: number
+          format: double
+          minimum: 0
+          description: Percentage of limitAmount consumed by monthly expenses.
+        status:
+          $ref: '#/components/schemas/BudgetStatus'
+        alerts:
+          type: array
+          description: Informational alerts for this category. Empty when no warning or exceeded condition exists.
+          items:
+            $ref: '#/components/schemas/BudgetAlert'
+    BudgetSummaryResponse:
+      type: object
+      description: Monthly budget summary across active category budgets. This summary is informational and does not send notifications, synchronize banks, or modify expenses.
+      required:
+        - month
+        - totalLimitAmount
+        - totalConsumedAmount
+        - totalRemainingAmount
+        - totalOverspentAmount
+        - overallConsumptionPercentage
+        - status
+        - categories
+        - alerts
+      properties:
+        month:
+          type: string
+          pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+          description: Month summarized using YYYY-MM format.
+          example: '2026-05'
+        totalLimitAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of active budget limits for the selected month.
+        totalConsumedAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of consumed expenses across active budget categories.
+        totalRemainingAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of remaining amounts across active budgets.
+        totalOverspentAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Sum of overspent amounts across exceeded budgets.
+        overallConsumptionPercentage:
+          type: number
+          format: double
+          minimum: 0
+          description: Percentage of totalLimitAmount consumed across active budgets. Months without active budget limits return 0.
+        status:
+          $ref: '#/components/schemas/BudgetStatus'
+        categories:
+          type: array
+          description: Category-level budget statuses. Months without active budgets return an empty array.
+          items:
+            $ref: '#/components/schemas/BudgetCategoryStatus'
+        alerts:
+          type: array
+          description: Aggregated informational alerts across the monthly budget summary.
+          items:
+            $ref: '#/components/schemas/BudgetAlert'
     SavingsGoalRequest:
       type: object
       description: Manual savings goal definition. This DTO does not represent an investment product, interest-bearing account, shared goal, or banking integration.

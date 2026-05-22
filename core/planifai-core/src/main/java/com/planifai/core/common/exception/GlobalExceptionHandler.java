@@ -1,5 +1,6 @@
 package com.planifai.core.common.exception;
 
+import com.planifai.core.finance.domain.exception.BudgetNotFoundException;
 import com.planifai.core.finance.domain.exception.RecurringExpenseNotFoundException;
 import com.planifai.core.finance.domain.exception.SavingsGoalNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.util.NoSuchElementException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler({
+            BudgetNotFoundException.class,
             RecurringExpenseNotFoundException.class,
             SavingsGoalNotFoundException.class,
             NoSuchElementException.class

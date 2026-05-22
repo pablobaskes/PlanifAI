@@ -1,6 +1,9 @@
 package com.planifai.core.finance.infrastructure.input.rest;
 
 import com.planifai.core.api.FinanceApi;
+import com.planifai.core.dto.BudgetRequest;
+import com.planifai.core.dto.BudgetResponse;
+import com.planifai.core.dto.BudgetSummaryResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -17,6 +20,7 @@ import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.FinanceConstants;
+import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
 import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
@@ -169,12 +173,51 @@ public class FinanceRestAdapter implements FinanceApi {
         ));
     }
 
+    @Override
+    public ResponseEntity<List<BudgetResponse>> getFinanceBudgets(String month) {
+        return ResponseEntity.ok(financeRestMapper.toBudgetResponse(
+                financeInputPort.getBudgets(parseMonth(month))
+        ));
+    }
+
+    @Override
+    public ResponseEntity<BudgetResponse> getFinanceBudgetById(Long id) {
+        return ResponseEntity.ok(financeRestMapper.toResponse(financeInputPort.getBudgetById(id)));
+    }
+
+    @Override
+    public ResponseEntity<BudgetResponse> createFinanceBudget(BudgetRequest budgetRequest) {
+        Budget createdBudget = financeInputPort.createBudget(financeRestMapper.toDomain(budgetRequest));
+        return ResponseEntity.status(HttpStatus.CREATED).body(financeRestMapper.toResponse(createdBudget));
+    }
+
+    @Override
+    public ResponseEntity<BudgetResponse> updateFinanceBudget(Long id, BudgetRequest budgetRequest) {
+        Budget updatedBudget = financeInputPort.updateBudget(id, financeRestMapper.toDomain(budgetRequest));
+        return ResponseEntity.ok(financeRestMapper.toResponse(updatedBudget));
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteFinanceBudget(Long id) {
+        financeInputPort.deleteBudget(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<BudgetSummaryResponse> getFinanceBudgetSummary(String month) {
+        parseMonth(month);
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
     private String toCategoryLabel(FinanceCategory category) {
         String value = category.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
     }
 
     private YearMonth parseMonth(String month) {
+        if (month == null || month.isBlank()) {
+            throw new IllegalArgumentException(FinanceConstants.INVALID_MONTH);
+        }
         try {
             return YearMonth.parse(month);
         } catch (DateTimeException exception) {

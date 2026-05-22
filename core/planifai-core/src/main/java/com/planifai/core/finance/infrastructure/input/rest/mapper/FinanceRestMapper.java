@@ -1,5 +1,7 @@
 package com.planifai.core.finance.infrastructure.input.rest.mapper;
 
+import com.planifai.core.dto.BudgetRequest;
+import com.planifai.core.dto.BudgetResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -17,6 +19,7 @@ import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.FinanceConstants;
+import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
@@ -37,6 +40,8 @@ import org.mapstruct.Mapping;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.Collections;
 import java.util.List;
 
 @Mapper(componentModel = "spring")
@@ -89,6 +94,38 @@ public interface FinanceRestMapper {
     }
 
     List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses);
+
+    default Budget toDomain(BudgetRequest request) {
+        if (request == null) {
+            return null;
+        }
+
+        return Budget.builder()
+                .month(toYearMonth(request.getMonth()))
+                .category(toDomain(request.getCategory()))
+                .limitAmount(toBigDecimal(request.getLimitAmount()))
+                .active(request.getActive())
+                .notes(request.getNotes())
+                .build();
+    }
+
+    default BudgetResponse toResponse(Budget budget) {
+        return new BudgetResponse()
+                .id(budget.getId())
+                .month(budget.getMonth() != null ? budget.getMonth().toString() : null)
+                .category(toResponse(budget.getCategory()))
+                .limitAmount(toDouble(budget.getLimitAmount()))
+                .active(budget.getActive())
+                .notes(budget.getNotes())
+                .consumedAmount(0.0)
+                .remainingAmount(toDouble(budget.getLimitAmount()))
+                .overspentAmount(0.0)
+                .consumptionPercentage(0.0)
+                .status(com.planifai.core.dto.BudgetStatus.OK)
+                .alerts(Collections.emptyList());
+    }
+
+    List<BudgetResponse> toBudgetResponse(List<Budget> budgets);
 
     default SavingsGoal toDomain(SavingsGoalRequest request) {
         if (request == null) {
@@ -214,6 +251,17 @@ public interface FinanceRestMapper {
 
     private BigDecimal toBigDecimal(Double value) {
         return value != null ? BigDecimal.valueOf(value) : null;
+    }
+
+    private YearMonth toYearMonth(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return YearMonth.parse(value);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException(FinanceConstants.INVALID_MONTH, exception);
+        }
     }
 
     default ExpenseCategory toDomain(

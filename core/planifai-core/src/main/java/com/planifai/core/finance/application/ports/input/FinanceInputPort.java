@@ -7,6 +7,7 @@ import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
 import com.planifai.core.finance.domain.model.transaction.Income;
 import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
 
@@ -42,6 +43,16 @@ public interface FinanceInputPort {
     RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense);
 
     void deleteRecurringExpense(Long id);
+
+    List<Budget> getBudgets(YearMonth month);
+
+    Budget getBudgetById(Long id);
+
+    Budget createBudget(Budget budget);
+
+    Budget updateBudget(Long id, Budget budget);
+
+    void deleteBudget(Long id);
 
     List<SavingsGoal> getSavingsGoals();
 

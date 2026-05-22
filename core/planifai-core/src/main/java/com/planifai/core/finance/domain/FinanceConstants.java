@@ -15,6 +15,13 @@ public final class FinanceConstants {
     public static final String INVALID_MONTH = "Invalid month.";
     public static final String RECURRING_EXPENSE_ID_REQUIRED = "Recurring expense id is required.";
     public static final String SAVINGS_GOAL_ID_REQUIRED = "Savings goal id is required.";
+    public static final String BUDGET_ID_REQUIRED = "Budget id is required.";
+    public static final String BUDGET_REQUIRED = "Budget is required.";
+    public static final String BUDGET_MONTH_REQUIRED = "Budget month is required.";
+    public static final String BUDGET_CATEGORY_REQUIRED = "Budget category is required.";
+    public static final String BUDGET_LIMIT_AMOUNT_POSITIVE = "Budget limit amount must be greater than zero.";
+    public static final String BUDGET_ACTIVE_DUPLICATE =
+            "An active budget already exists for this category and month.";
     public static final String EXPENSE_REQUIRED = "Expense is required.";
     public static final String EXPENSE_CONCEPT_REQUIRED = "Expense concept is required.";
     public static final String EXPENSE_AMOUNT_POSITIVE = "Expense amount must be positive.";
@@ -48,6 +55,7 @@ public final class FinanceConstants {
             "Savings goal monthly saving rate cannot be negative.";
     public static final String RECURRING_EXPENSE_NOT_FOUND_PREFIX = "Recurring expense not found: ";
     public static final String SAVINGS_GOAL_NOT_FOUND_PREFIX = "Savings goal not found: ";
+    public static final String BUDGET_NOT_FOUND_PREFIX = "Budget not found: ";
     public static final String RECURRING_EXPENSE_RECURRENCE_UNSUPPORTED =
             "Recurring expense recurrence must be MONTHLY or YEARLY.";
 
