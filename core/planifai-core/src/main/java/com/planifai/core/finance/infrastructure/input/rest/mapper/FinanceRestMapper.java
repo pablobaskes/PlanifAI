@@ -166,9 +166,10 @@ public interface FinanceRestMapper {
     default com.planifai.core.dto.BudgetAlert toResponse(BudgetAlert alert) {
         return new com.planifai.core.dto.BudgetAlert()
                 .type(com.planifai.core.dto.BudgetAlertType.valueOf(alert.type().name()))
-                .status(com.planifai.core.dto.BudgetStatus.valueOf(alert.status().name()))
                 .category(toResponse(alert.category()))
-                .thresholdPercentage(toDouble(alert.thresholdPercentage()))
+                .limitAmount(toDouble(alert.limitAmount()))
+                .consumedAmount(toDouble(alert.consumedAmount()))
+                .threshold(toDouble(alert.threshold()))
                 .message(alert.message());
     }
 

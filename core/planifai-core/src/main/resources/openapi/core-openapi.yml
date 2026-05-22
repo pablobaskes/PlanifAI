@@ -683,7 +683,7 @@ components:
     BudgetAlertType:
       type: string
       description: Informational budget alert type. Alerts are returned in API responses only and do not represent push notifications or external messages.
-      enum: [WARNING_THRESHOLD, BUDGET_EXCEEDED]
+      enum: [APPROACHING_LIMIT, BUDGET_EXCEEDED]
     FinancialHealthStatus:
       type: string
       enum: [GOOD, WARNING, BAD, NO_DATA]
@@ -787,20 +787,27 @@ components:
     BudgetAlert:
       type: object
       description: Informational alert computed from budget consumption. Alerts are response data only; no push notification or external delivery is implied.
-      required: [type, status, message]
+      required: [type, category, message, limitAmount, consumedAmount, threshold]
       properties:
         type:
           $ref: '#/components/schemas/BudgetAlertType'
-        status:
-          $ref: '#/components/schemas/BudgetStatus'
         category:
           $ref: '#/components/schemas/FinanceCategory'
-        thresholdPercentage:
+        limitAmount:
           type: number
           format: double
           minimum: 0
-          maximum: 100
-          description: Threshold that produced the alert when applicable.
+          description: Configured monthly budget limit for the alerted category.
+        consumedAmount:
+          type: number
+          format: double
+          minimum: 0
+          description: Current consumed amount for the alerted category in the selected month.
+        threshold:
+          type: number
+          format: double
+          minimum: 0
+          description: Consumption percentage threshold that produced the alert.
         message:
           type: string
           maxLength: 300

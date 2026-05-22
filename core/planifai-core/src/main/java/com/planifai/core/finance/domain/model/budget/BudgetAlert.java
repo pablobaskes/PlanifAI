@@ -8,9 +8,10 @@ import java.math.BigDecimal;
 @Builder
 public record BudgetAlert(
         BudgetAlertType type,
-        BudgetStatus status,
         ExpenseCategory category,
-        BigDecimal thresholdPercentage,
+        BigDecimal limitAmount,
+        BigDecimal consumedAmount,
+        BigDecimal threshold,
         String message
 ) {
 }

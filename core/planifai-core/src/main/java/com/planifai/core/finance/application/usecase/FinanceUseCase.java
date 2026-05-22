@@ -543,7 +543,13 @@ public class FinanceUseCase implements FinanceInputPort {
                 .overspentAmount(overspentAmount)
                 .consumptionPercentage(consumptionPercentage)
                 .status(status)
-                .alerts(buildBudgetAlerts(budget.getCategory(), consumptionPercentage, status))
+                .alerts(buildBudgetAlerts(
+                        budget.getCategory(),
+                        limitAmount,
+                        consumedAmount,
+                        consumptionPercentage,
+                        status
+                ))
                 .build();
     }
 
@@ -569,6 +575,8 @@ public class FinanceUseCase implements FinanceInputPort {
 
     private List<BudgetAlert> buildBudgetAlerts(
             ExpenseCategory category,
+            BigDecimal limitAmount,
+            BigDecimal consumedAmount,
             BigDecimal consumptionPercentage,
             BudgetStatus status
     ) {
@@ -578,19 +586,20 @@ public class FinanceUseCase implements FinanceInputPort {
 
         BudgetAlertType type = status == BudgetStatus.EXCEEDED
                 ? BudgetAlertType.BUDGET_EXCEEDED
-                : BudgetAlertType.WARNING_THRESHOLD;
+                : BudgetAlertType.APPROACHING_LIMIT;
         BigDecimal threshold = status == BudgetStatus.EXCEEDED
                 ? FinanceConstants.MAX_PERCENTAGE
                 : FinanceConstants.BUDGET_WARNING_PERCENTAGE;
         String message = status == BudgetStatus.EXCEEDED
                 ? "Budget exceeded for category " + category.name() + "."
-                : "Budget warning threshold reached for category " + category.name() + ".";
+                : "Budget approaching limit for category " + category.name() + ".";
 
         return List.of(BudgetAlert.builder()
                 .type(type)
-                .status(status)
                 .category(category)
-                .thresholdPercentage(threshold)
+                .limitAmount(limitAmount)
+                .consumedAmount(consumedAmount)
+                .threshold(threshold)
                 .message(message)
                 .build());
     }
