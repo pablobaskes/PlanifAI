@@ -39,6 +39,7 @@ import java.time.YearMonth;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class FinanceRestAdapterTest {
 
@@ -113,7 +114,7 @@ class FinanceRestAdapterTest {
     }
 
     @Test
-    void createRecurringExpenseReturnsBadRequestForInvalidRecurrence() {
+    void createRecurringExpensePropagatesInvalidRecurrenceForGlobalHandler() {
         FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
         FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
         RecurringExpenseRequest request = new RecurringExpenseRequest(
@@ -126,9 +127,7 @@ class FinanceRestAdapterTest {
                 true
         );
 
-        ResponseEntity<RecurringExpenseResponse> response = adapter.createRecurringExpense(request);
-
-        assertEquals(400, response.getStatusCode().value());
+        assertThrows(IllegalArgumentException.class, () -> adapter.createRecurringExpense(request));
     }
 
     @Test
@@ -144,13 +143,11 @@ class FinanceRestAdapterTest {
     }
 
     @Test
-    void getMonthlyObligationsSummaryReturnsBadRequestForInvalidMonth() {
+    void getMonthlyObligationsSummaryPropagatesInvalidMonthForGlobalHandler() {
         FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
         FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
 
-        ResponseEntity<MonthlyObligationsSummaryResponse> response = adapter.getMonthlyObligationsSummary("2026-13");
-
-        assertEquals(400, response.getStatusCode().value());
+        assertThrows(IllegalArgumentException.class, () -> adapter.getMonthlyObligationsSummary("2026-13"));
     }
 
     @Test
@@ -186,7 +183,7 @@ class FinanceRestAdapterTest {
     }
 
     @Test
-    void createSavingsGoalReturnsBadRequestForFunctionalValidationError() {
+    void createSavingsGoalPropagatesFunctionalValidationErrorForGlobalHandler() {
         FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
         financeInputPort.rejectSavingsGoalCreate = true;
         FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
@@ -198,9 +195,7 @@ class FinanceRestAdapterTest {
                 SavingsGoalStatus.ACTIVE
         );
 
-        ResponseEntity<SavingsGoalResponse> response = adapter.createSavingsGoal(request);
-
-        assertEquals(400, response.getStatusCode().value());
+        assertThrows(IllegalArgumentException.class, () -> adapter.createSavingsGoal(request));
     }
 
     @Test
