@@ -3,6 +3,7 @@ package com.planifai.core.finance.application.usecase;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
+import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategory;
 import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
@@ -13,6 +14,10 @@ import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -31,10 +36,12 @@ class FinanceUseCaseTest {
     private final FakeExpenseOutputPort expenseOutputPort = new FakeExpenseOutputPort();
     private final FakeIncomeOutputPort incomeOutputPort = new FakeIncomeOutputPort();
     private final FakeRecurringExpenseOutputPort recurringExpenseOutputPort = new FakeRecurringExpenseOutputPort();
+    private final FakeSavingsGoalOutputPort savingsGoalOutputPort = new FakeSavingsGoalOutputPort();
     private final FinanceUseCase financeUseCase = new FinanceUseCase(
             expenseOutputPort,
             incomeOutputPort,
-            recurringExpenseOutputPort
+            recurringExpenseOutputPort,
+            savingsGoalOutputPort
     );
 
     @Test
@@ -373,6 +380,238 @@ class FinanceUseCaseTest {
         assertTrue(summary.upcomingPayments().isEmpty());
     }
 
+    @Test
+    void createSavingsGoalStoresValidGoal() {
+        SavingsGoal request = savingsGoal(
+                null,
+                "Emergency fund",
+                "5000.00",
+                "1000.00",
+                SavingsGoalCategory.EMERGENCY_FUND,
+                SavingsGoalStatus.ACTIVE,
+                null
+        );
+
+        SavingsGoal created = financeUseCase.createSavingsGoal(request);
+
+        assertEquals(1L, created.getId());
+        assertEquals("Emergency fund", created.getName());
+        assertEquals(SavingsGoalCategory.EMERGENCY_FUND, created.getCategory());
+        assertEquals(SavingsGoalStatus.ACTIVE, created.getStatus());
+        assertBigDecimal("5000.00", created.getTargetAmount());
+        assertBigDecimal("1000.00", created.getCurrentAmount());
+    }
+
+    @Test
+    void createSavingsGoalRejectsNonPositiveTargetAmount() {
+        SavingsGoal request = savingsGoal(
+                null,
+                "Invalid",
+                "0.00",
+                "0.00",
+                SavingsGoalCategory.OTHER,
+                SavingsGoalStatus.ACTIVE,
+                null
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createSavingsGoal(request));
+    }
+
+    @Test
+    void createSavingsGoalRejectsNegativeCurrentAmount() {
+        SavingsGoal request = savingsGoal(
+                null,
+                "Invalid",
+                "1000.00",
+                "-1.00",
+                SavingsGoalCategory.OTHER,
+                SavingsGoalStatus.ACTIVE,
+                null
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createSavingsGoal(request));
+    }
+
+    @Test
+    void getSavingsGoalsListsPersistedGoals() {
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "250.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                null
+        ));
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                2L,
+                "Laptop",
+                "1200.00",
+                "1200.00",
+                SavingsGoalCategory.ELECTRONICS,
+                SavingsGoalStatus.COMPLETED,
+                null
+        ));
+
+        List<SavingsGoal> savingsGoals = financeUseCase.getSavingsGoals();
+
+        assertEquals(2, savingsGoals.size());
+        assertEquals("Travel", savingsGoals.get(0).getName());
+        assertEquals("Laptop", savingsGoals.get(1).getName());
+    }
+
+    @Test
+    void updateSavingsGoalUpdatesExistingGoalAndPreservesId() {
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "250.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                null
+        ));
+        SavingsGoal update = savingsGoal(
+                null,
+                "Japan travel",
+                "3000.00",
+                "500.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.PAUSED,
+                null
+        );
+
+        SavingsGoal updated = financeUseCase.updateSavingsGoal(1L, update);
+
+        assertEquals(1L, updated.getId());
+        assertEquals("Japan travel", updated.getName());
+        assertEquals(SavingsGoalStatus.PAUSED, updated.getStatus());
+        assertBigDecimal("3000.00", updated.getTargetAmount());
+        assertBigDecimal("500.00", updated.getCurrentAmount());
+    }
+
+    @Test
+    void deleteSavingsGoalRemovesExistingGoal() {
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Car",
+                "8000.00",
+                "1000.00",
+                SavingsGoalCategory.CAR,
+                SavingsGoalStatus.ACTIVE,
+                null
+        ));
+
+        financeUseCase.deleteSavingsGoal(1L);
+
+        assertTrue(savingsGoalOutputPort.savingsGoals.isEmpty());
+    }
+
+    @Test
+    void savingsGoalCalculatesProgressAndRemainingAmount() {
+        SavingsGoal savingsGoal = savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "500.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                null
+        );
+
+        assertBigDecimal("25.00", savingsGoal.progressPercentage());
+        assertBigDecimal("1500.00", savingsGoal.remainingAmount());
+    }
+
+    @Test
+    void getSavingsGoalCalculatesEtaWithPositiveCurrentMonthSavings() {
+        YearMonth currentMonth = YearMonth.now();
+        incomeOutputPort.incomes.add(income("1000.00", currentMonth.atDay(1)));
+        expenseOutputPort.expenses.add(expense("400.00", currentMonth.atDay(2), ExpenseCategory.FOOD));
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "800.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                null
+        ));
+
+        SavingsGoal savingsGoal = financeUseCase.getSavingsGoalById(1L);
+
+        assertBigDecimal("600.00", savingsGoal.getMonthlySavingRate());
+        assertEquals(2, savingsGoal.estimatedMonthsToCompletion());
+    }
+
+    @Test
+    void getSavingsGoalDoesNotBreakEtaWithZeroOrNegativeCurrentMonthSavings() {
+        YearMonth currentMonth = YearMonth.now();
+        incomeOutputPort.incomes.add(income("1000.00", currentMonth.atDay(1)));
+        expenseOutputPort.expenses.add(expense("1200.00", currentMonth.atDay(2), ExpenseCategory.FOOD));
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "800.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                null
+        ));
+
+        SavingsGoal savingsGoal = financeUseCase.getSavingsGoalById(1L);
+
+        assertBigDecimal("0", savingsGoal.getMonthlySavingRate());
+        assertEquals(null, savingsGoal.estimatedMonthsToCompletion());
+    }
+
+    @Test
+    void getSavingsGoalsSummaryReturnsSafeValuesWithoutGoals() {
+        SavingsGoalsSummary summary = financeUseCase.getSavingsGoalsSummary();
+
+        assertEquals(0, summary.totalGoals());
+        assertEquals(0, summary.activeGoals());
+        assertEquals(0, summary.completedGoals());
+        assertBigDecimal("0", summary.totalTargetAmount());
+        assertBigDecimal("0", summary.totalCurrentAmount());
+        assertBigDecimal("0", summary.totalRemainingAmount());
+        assertBigDecimal("0", summary.overallProgressPercentage());
+        assertEquals(null, summary.nearestGoalToComplete());
+    }
+
+    @Test
+    void getSavingsGoalsSummaryAggregatesActiveAndCompletedGoals() {
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                1L,
+                "Travel",
+                "2000.00",
+                "500.00",
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE,
+                new BigDecimal("250.00")
+        ));
+        savingsGoalOutputPort.savingsGoals.add(savingsGoal(
+                2L,
+                "Laptop",
+                "1000.00",
+                "1000.00",
+                SavingsGoalCategory.ELECTRONICS,
+                SavingsGoalStatus.COMPLETED,
+                null
+        ));
+
+        SavingsGoalsSummary summary = financeUseCase.getSavingsGoalsSummary();
+
+        assertEquals(2, summary.totalGoals());
+        assertEquals(1, summary.activeGoals());
+        assertEquals(1, summary.completedGoals());
+        assertBigDecimal("3000.00", summary.totalTargetAmount());
+        assertBigDecimal("1500.00", summary.totalCurrentAmount());
+        assertBigDecimal("1500.00", summary.totalRemainingAmount());
+        assertBigDecimal("50.00", summary.overallProgressPercentage());
+        assertEquals("Travel", summary.nearestGoalToComplete().getName());
+    }
+
     private Income income(String amount, LocalDate date) {
         Income income = new Income();
         income.setAmount(new BigDecimal(amount));
@@ -415,6 +654,26 @@ class FinanceUseCaseTest {
         recurringExpense.setEndDate(endDate);
         recurringExpense.setActive(active);
         return recurringExpense;
+    }
+
+    private SavingsGoal savingsGoal(
+            Long id,
+            String name,
+            String targetAmount,
+            String currentAmount,
+            SavingsGoalCategory category,
+            SavingsGoalStatus status,
+            BigDecimal monthlySavingRate
+    ) {
+        SavingsGoal savingsGoal = new SavingsGoal();
+        savingsGoal.setId(id);
+        savingsGoal.setName(name);
+        savingsGoal.setTargetAmount(new BigDecimal(targetAmount));
+        savingsGoal.setCurrentAmount(new BigDecimal(currentAmount));
+        savingsGoal.setCategory(category);
+        savingsGoal.setStatus(status);
+        savingsGoal.setMonthlySavingRate(monthlySavingRate);
+        return savingsGoal;
     }
 
     private void assertBreakdown(
@@ -536,6 +795,53 @@ class FinanceUseCaseTest {
         @Override
         public void deleteById(Long id) {
             recurringExpenses.removeIf(recurringExpense -> id.equals(recurringExpense.getId()));
+        }
+    }
+
+    private static final class FakeSavingsGoalOutputPort implements SavingsGoalOutputPort {
+
+        private final List<SavingsGoal> savingsGoals = new ArrayList<>();
+        private long nextId = 1L;
+
+        @Override
+        public List<SavingsGoal> findAll() {
+            return savingsGoals;
+        }
+
+        @Override
+        public List<SavingsGoal> findByCategory(SavingsGoalCategory category) {
+            return savingsGoals.stream()
+                    .filter(savingsGoal -> category == savingsGoal.getCategory())
+                    .toList();
+        }
+
+        @Override
+        public List<SavingsGoal> findByStatus(SavingsGoalStatus status) {
+            return savingsGoals.stream()
+                    .filter(savingsGoal -> status == savingsGoal.getStatus())
+                    .toList();
+        }
+
+        @Override
+        public Optional<SavingsGoal> findById(Long id) {
+            return savingsGoals.stream()
+                    .filter(savingsGoal -> id.equals(savingsGoal.getId()))
+                    .findFirst();
+        }
+
+        @Override
+        public SavingsGoal save(SavingsGoal savingsGoal) {
+            if (savingsGoal.getId() == null) {
+                savingsGoal.setId(nextId++);
+            }
+            savingsGoals.removeIf(savedSavingsGoal -> savingsGoal.getId().equals(savedSavingsGoal.getId()));
+            savingsGoals.add(savingsGoal);
+            return savingsGoal;
+        }
+
+        @Override
+        public void deleteById(Long id) {
+            savingsGoals.removeIf(savingsGoal -> id.equals(savingsGoal.getId()));
         }
     }
 }

@@ -128,7 +128,7 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<SavingsGoalSummaryResponse> getSavingsGoalsSummary() {
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+        return ResponseEntity.ok(financeRestMapper.toResponse(financeInputPort.getSavingsGoalsSummary()));
     }
 
     @Override

@@ -13,6 +13,11 @@ import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
 import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.dto.Recurrence;
+import com.planifai.core.dto.SavingsGoalCategory;
+import com.planifai.core.dto.SavingsGoalRequest;
+import com.planifai.core.dto.SavingsGoalResponse;
+import com.planifai.core.dto.SavingsGoalStatus;
+import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.ExpenseCategory;
@@ -22,6 +27,8 @@ import com.planifai.core.finance.domain.model.FinanceHealthStatus;
 import com.planifai.core.finance.domain.model.Income;
 import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -158,10 +165,74 @@ class FinanceRestAdapterTest {
         assertEquals("2026-05", response.getBody().getMonth());
     }
 
+    @Test
+    void createSavingsGoalReturnsCreatedResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+        SavingsGoalRequest request = new SavingsGoalRequest(
+                "Travel",
+                2000.0,
+                500.0,
+                SavingsGoalCategory.TRAVEL,
+                SavingsGoalStatus.ACTIVE
+        );
+
+        ResponseEntity<SavingsGoalResponse> response = adapter.createSavingsGoal(request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals(1L, response.getBody().getId());
+        assertEquals("Travel", response.getBody().getName());
+        assertEquals(25.0, response.getBody().getProgressPercentage());
+    }
+
+    @Test
+    void createSavingsGoalReturnsBadRequestForFunctionalValidationError() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        financeInputPort.rejectSavingsGoalCreate = true;
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+        SavingsGoalRequest request = new SavingsGoalRequest(
+                "Invalid",
+                0.0,
+                0.0,
+                SavingsGoalCategory.OTHER,
+                SavingsGoalStatus.ACTIVE
+        );
+
+        ResponseEntity<SavingsGoalResponse> response = adapter.createSavingsGoal(request);
+
+        assertEquals(400, response.getStatusCode().value());
+    }
+
+    @Test
+    void deleteSavingsGoalReturnsNoContent() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<Void> response = adapter.deleteSavingsGoal(1L);
+
+        assertEquals(204, response.getStatusCode().value());
+        assertEquals(1L, financeInputPort.deletedSavingsGoalId);
+    }
+
+    @Test
+    void getSavingsGoalsSummaryReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<SavingsGoalSummaryResponse> response = adapter.getSavingsGoalsSummary();
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(2, response.getBody().getTotalGoals());
+        assertEquals(1, response.getBody().getActiveGoals());
+        assertEquals("Travel", response.getBody().getNearestGoalToComplete().getName());
+    }
+
     private static final class FakeFinanceInputPort implements FinanceInputPort {
 
         private YearMonth requestedMonth;
         private ExpenseCategory requestedCategory;
+        private boolean rejectSavingsGoalCreate;
+        private Long deletedSavingsGoalId;
 
         @Override
         public List<Expense> getExpenses() {
@@ -255,6 +326,69 @@ class FinanceRestAdapterTest {
         @Override
         public void deleteRecurringExpense(Long id) {
         }
+
+        @Override
+        public List<SavingsGoal> getSavingsGoals() {
+            return List.of(savingsGoal());
+        }
+
+        @Override
+        public SavingsGoalsSummary getSavingsGoalsSummary() {
+            return new SavingsGoalsSummary(
+                    2,
+                    1,
+                    1,
+                    0,
+                    0,
+                    new BigDecimal("3000.00"),
+                    new BigDecimal("1500.00"),
+                    new BigDecimal("1500.00"),
+                    new BigDecimal("50.00"),
+                    new BigDecimal("250.00"),
+                    6,
+                    LocalDate.of(2026, 11, 22),
+                    savingsGoal()
+            );
+        }
+
+        @Override
+        public SavingsGoal getSavingsGoalById(Long id) {
+            SavingsGoal savingsGoal = savingsGoal();
+            savingsGoal.setId(id);
+            return savingsGoal;
+        }
+
+        @Override
+        public SavingsGoal createSavingsGoal(SavingsGoal savingsGoal) {
+            if (rejectSavingsGoalCreate) {
+                throw new IllegalArgumentException("Invalid savings goal.");
+            }
+            savingsGoal.setId(1L);
+            return savingsGoal;
+        }
+
+        @Override
+        public SavingsGoal updateSavingsGoal(Long id, SavingsGoal savingsGoal) {
+            savingsGoal.setId(id);
+            return savingsGoal;
+        }
+
+        @Override
+        public void deleteSavingsGoal(Long id) {
+            deletedSavingsGoalId = id;
+        }
+
+        private SavingsGoal savingsGoal() {
+            SavingsGoal savingsGoal = new SavingsGoal();
+            savingsGoal.setId(1L);
+            savingsGoal.setName("Travel");
+            savingsGoal.setTargetAmount(new BigDecimal("2000.00"));
+            savingsGoal.setCurrentAmount(new BigDecimal("500.00"));
+            savingsGoal.setCategory(com.planifai.core.finance.domain.model.SavingsGoalCategory.TRAVEL);
+            savingsGoal.setStatus(com.planifai.core.finance.domain.model.SavingsGoalStatus.ACTIVE);
+            savingsGoal.setMonthlySavingRate(new BigDecimal("250.00"));
+            return savingsGoal;
+        }
     }
 
     private static final class TestFinanceRestMapper implements FinanceRestMapper {
@@ -292,6 +426,13 @@ class FinanceRestAdapterTest {
         @Override
         public List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses) {
             return List.of();
+        }
+
+        @Override
+        public List<SavingsGoalResponse> toSavingsGoalResponse(List<SavingsGoal> savingsGoals) {
+            return savingsGoals.stream()
+                    .map(this::toResponse)
+                    .toList();
         }
 
         @Override

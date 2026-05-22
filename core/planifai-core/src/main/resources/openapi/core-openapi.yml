@@ -704,6 +704,7 @@ components:
         - overallProgressPercentage
         - monthlySavingRate
         - estimatedMonthsToCompletion
+        - nearestGoalToComplete
       properties:
         totalGoals:
           type: integer
@@ -767,6 +768,9 @@ components:
           format: date
           nullable: true
           description: Estimated date to complete all active savings goals. Null means ETA cannot be calculated yet.
+        nearestGoalToComplete:
+          $ref: '#/components/schemas/SavingsGoalResponse'
+          description: Active savings goal with the smallest remaining amount. Null when there are no active incomplete goals.
     RecurringExpenseRequest:
       type: object
       description: Manually managed recurring expense or financial obligation. This DTO never represents an automatic payment instruction or bank synchronization mandate.

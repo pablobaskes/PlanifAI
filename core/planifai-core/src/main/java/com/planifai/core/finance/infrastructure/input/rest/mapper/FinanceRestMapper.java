@@ -14,6 +14,7 @@ import com.planifai.core.dto.RecurringExpenseRequest;
 import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.dto.SavingsGoalRequest;
 import com.planifai.core.dto.SavingsGoalResponse;
+import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
 import com.planifai.core.finance.domain.model.Expense;
 import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
@@ -24,6 +25,7 @@ import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
 import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
 import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -119,6 +121,25 @@ public interface FinanceRestMapper {
     }
 
     List<SavingsGoalResponse> toSavingsGoalResponse(List<SavingsGoal> savingsGoals);
+
+    default SavingsGoalSummaryResponse toResponse(SavingsGoalsSummary summary) {
+        return new SavingsGoalSummaryResponse()
+                .totalGoals(summary.totalGoals())
+                .activeGoals(summary.activeGoals())
+                .completedGoals(summary.completedGoals())
+                .pausedGoals(summary.pausedGoals())
+                .cancelledGoals(summary.cancelledGoals())
+                .totalTargetAmount(toDouble(summary.totalTargetAmount()))
+                .totalCurrentAmount(toDouble(summary.totalCurrentAmount()))
+                .totalRemainingAmount(toDouble(summary.totalRemainingAmount()))
+                .overallProgressPercentage(toDouble(summary.overallProgressPercentage()))
+                .monthlySavingRate(toDouble(summary.monthlySavingRate()))
+                .estimatedMonthsToCompletion(summary.estimatedMonthsToCompletion())
+                .estimatedCompletionDate(summary.estimatedCompletionDate())
+                .nearestGoalToComplete(summary.nearestGoalToComplete() != null
+                        ? toResponse(summary.nearestGoalToComplete())
+                        : null);
+    }
 
     default MonthlyObligationsSummaryResponse toResponse(MonthlyObligationsSummary summary) {
         return new MonthlyObligationsSummaryResponse()

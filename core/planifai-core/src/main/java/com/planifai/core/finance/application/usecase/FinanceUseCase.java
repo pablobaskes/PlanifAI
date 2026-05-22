@@ -23,6 +23,7 @@ import com.planifai.core.finance.domain.model.RecurringExpense;
 import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
 import com.planifai.core.finance.domain.model.SavingsGoal;
 import com.planifai.core.finance.domain.model.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
 import com.planifai.core.finance.domain.model.UpcomingPayment;
 import org.springframework.stereotype.Service;
 
@@ -246,6 +247,42 @@ public class FinanceUseCase implements FinanceInputPort {
     }
 
     @Override
+    public SavingsGoalsSummary getSavingsGoalsSummary() {
+        BigDecimal currentMonthlySavingRate = calculateCurrentMonthlySavingRate();
+        List<SavingsGoal> savingsGoals = savingsGoalOutputPort.findAll().stream()
+                .map(savingsGoal -> withEffectiveMonthlySavingRate(savingsGoal, currentMonthlySavingRate))
+                .toList();
+        List<SavingsGoal> nonCancelledGoals = savingsGoals.stream()
+                .filter(savingsGoal -> savingsGoal.getStatus() != SavingsGoalStatus.CANCELLED)
+                .toList();
+
+        BigDecimal totalTargetAmount = sumSavingsGoalTargets(nonCancelledGoals);
+        BigDecimal totalCurrentAmount = sumSavingsGoalCurrentAmounts(nonCancelledGoals);
+        BigDecimal totalRemainingAmount = sumSavingsGoalRemainingAmounts(nonCancelledGoals);
+        BigDecimal monthlySavingRate = calculateSummaryMonthlySavingRate(nonCancelledGoals, currentMonthlySavingRate);
+        Integer estimatedMonthsToCompletion = calculateSummaryEstimatedMonths(
+                totalRemainingAmount,
+                monthlySavingRate
+        );
+
+        return new SavingsGoalsSummary(
+                savingsGoals.size(),
+                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.ACTIVE),
+                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.COMPLETED),
+                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.PAUSED),
+                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.CANCELLED),
+                totalTargetAmount,
+                totalCurrentAmount,
+                totalRemainingAmount,
+                calculateOverallSavingsGoalProgress(totalCurrentAmount, totalTargetAmount),
+                monthlySavingRate,
+                estimatedMonthsToCompletion,
+                calculateSummaryEstimatedCompletionDate(estimatedMonthsToCompletion),
+                findNearestGoalToComplete(savingsGoals)
+        );
+    }
+
+    @Override
     public SavingsGoal getSavingsGoalById(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("Savings goal id is required.");
@@ -386,6 +423,87 @@ public class FinanceUseCase implements FinanceInputPort {
 
         BigDecimal netSavings = sumIncomes(incomes).subtract(sumExpenses(expenses));
         return netSavings.compareTo(BigDecimal.ZERO) > 0 ? netSavings : BigDecimal.ZERO;
+    }
+
+    private Integer countSavingsGoalsByStatus(List<SavingsGoal> savingsGoals, SavingsGoalStatus status) {
+        return (int) savingsGoals.stream()
+                .filter(savingsGoal -> savingsGoal.getStatus() == status)
+                .count();
+    }
+
+    private BigDecimal sumSavingsGoalTargets(List<SavingsGoal> savingsGoals) {
+        return savingsGoals.stream()
+                .map(SavingsGoal::getTargetAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumSavingsGoalCurrentAmounts(List<SavingsGoal> savingsGoals) {
+        return savingsGoals.stream()
+                .map(SavingsGoal::getCurrentAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal sumSavingsGoalRemainingAmounts(List<SavingsGoal> savingsGoals) {
+        return savingsGoals.stream()
+                .map(SavingsGoal::remainingAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal calculateOverallSavingsGoalProgress(
+            BigDecimal totalCurrentAmount,
+            BigDecimal totalTargetAmount
+    ) {
+        if (totalTargetAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal progress = totalCurrentAmount
+                .multiply(BigDecimal.valueOf(100))
+                .divide(totalTargetAmount, 2, RoundingMode.HALF_UP);
+        return progress.compareTo(BigDecimal.valueOf(100)) > 0 ? BigDecimal.valueOf(100) : progress;
+    }
+
+    private BigDecimal calculateSummaryMonthlySavingRate(
+            List<SavingsGoal> nonCancelledGoals,
+            BigDecimal currentMonthlySavingRate
+    ) {
+        if (currentMonthlySavingRate != null) {
+            return currentMonthlySavingRate;
+        }
+        return nonCancelledGoals.stream()
+                .filter(savingsGoal -> savingsGoal.getStatus() == SavingsGoalStatus.ACTIVE)
+                .map(SavingsGoal::getMonthlySavingRate)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private Integer calculateSummaryEstimatedMonths(BigDecimal totalRemainingAmount, BigDecimal monthlySavingRate) {
+        if (totalRemainingAmount.compareTo(BigDecimal.ZERO) == 0) {
+            return 0;
+        }
+        if (monthlySavingRate == null || monthlySavingRate.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+        return totalRemainingAmount
+                .divide(monthlySavingRate, 0, RoundingMode.CEILING)
+                .intValue();
+    }
+
+    private LocalDate calculateSummaryEstimatedCompletionDate(Integer estimatedMonthsToCompletion) {
+        return estimatedMonthsToCompletion != null ? LocalDate.now().plusMonths(estimatedMonthsToCompletion) : null;
+    }
+
+    private SavingsGoal findNearestGoalToComplete(List<SavingsGoal> savingsGoals) {
+        return savingsGoals.stream()
+                .filter(savingsGoal -> savingsGoal.getStatus() == SavingsGoalStatus.ACTIVE)
+                .filter(savingsGoal -> savingsGoal.remainingAmount().compareTo(BigDecimal.ZERO) > 0)
+                .min(Comparator
+                        .comparing(SavingsGoal::remainingAmount)
+                        .thenComparing(SavingsGoal::progressPercentage, Comparator.reverseOrder())
+                        .thenComparing(SavingsGoal::getName))
+                .orElse(null);
     }
 
     private boolean appliesToMonth(RecurringExpense recurringExpense, YearMonth month) {
