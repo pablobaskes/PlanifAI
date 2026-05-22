@@ -1,9 +1,14 @@
 package com.planifai.core.finance.application.usecase;
 
+import com.planifai.core.finance.application.ports.output.BudgetOutputPort;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
+import com.planifai.core.finance.domain.model.budget.Budget;
+import com.planifai.core.finance.domain.model.budget.BudgetAlertType;
+import com.planifai.core.finance.domain.model.budget.BudgetStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetSummary;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
@@ -37,11 +42,13 @@ class FinanceUseCaseTest {
     private final FakeIncomeOutputPort incomeOutputPort = new FakeIncomeOutputPort();
     private final FakeRecurringExpenseOutputPort recurringExpenseOutputPort = new FakeRecurringExpenseOutputPort();
     private final FakeSavingsGoalOutputPort savingsGoalOutputPort = new FakeSavingsGoalOutputPort();
+    private final FakeBudgetOutputPort budgetOutputPort = new FakeBudgetOutputPort();
     private final FinanceUseCase financeUseCase = new FinanceUseCase(
             expenseOutputPort,
             incomeOutputPort,
             recurringExpenseOutputPort,
-            savingsGoalOutputPort
+            savingsGoalOutputPort,
+            budgetOutputPort
     );
 
     @Test
@@ -612,6 +619,146 @@ class FinanceUseCaseTest {
         assertEquals("Travel", summary.nearestGoalToComplete().getName());
     }
 
+    @Test
+    void createBudgetStoresValidBudgetWithDefaultActive() {
+        Budget request = budget(null, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "400.00", null);
+
+        Budget created = financeUseCase.createBudget(request);
+
+        assertEquals(1L, created.getId());
+        assertEquals(YearMonth.of(2026, 5), created.getMonth());
+        assertEquals(ExpenseCategory.FOOD, created.getCategory());
+        assertBigDecimal("400.00", created.getLimitAmount());
+        assertEquals(Boolean.TRUE, created.getActive());
+    }
+
+    @Test
+    void createBudgetRejectsNonPositiveLimitAmount() {
+        Budget request = budget(null, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "0.00", true);
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createBudget(request));
+    }
+
+    @Test
+    void createBudgetRejectsDuplicateActiveBudgetForSameCategoryAndMonth() {
+        budgetOutputPort.budgets.add(budget(1L, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "400.00", true));
+        Budget duplicate = budget(null, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "500.00", true);
+
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.createBudget(duplicate));
+    }
+
+    @Test
+    void getBudgetsListsBudgetsByMonth() {
+        budgetOutputPort.budgets.add(budget(1L, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "400.00", true));
+        budgetOutputPort.budgets.add(budget(2L, YearMonth.of(2026, 6), ExpenseCategory.FOOD, "600.00", true));
+
+        List<Budget> budgets = financeUseCase.getBudgets(YearMonth.of(2026, 5));
+
+        assertEquals(1, budgets.size());
+        assertEquals(YearMonth.of(2026, 5), budgets.get(0).getMonth());
+    }
+
+    @Test
+    void updateBudgetUpdatesExistingBudgetAndPreservesId() {
+        budgetOutputPort.budgets.add(budget(1L, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "400.00", true));
+        Budget update = budget(null, YearMonth.of(2026, 5), ExpenseCategory.RESTAURANTS, "250.00", false);
+
+        Budget updated = financeUseCase.updateBudget(1L, update);
+
+        assertEquals(1L, updated.getId());
+        assertEquals(ExpenseCategory.RESTAURANTS, updated.getCategory());
+        assertBigDecimal("250.00", updated.getLimitAmount());
+        assertEquals(Boolean.FALSE, updated.getActive());
+    }
+
+    @Test
+    void deleteBudgetRemovesExistingBudget() {
+        budgetOutputPort.budgets.add(budget(1L, YearMonth.of(2026, 5), ExpenseCategory.FOOD, "400.00", true));
+
+        financeUseCase.deleteBudget(1L);
+
+        assertTrue(budgetOutputPort.budgets.isEmpty());
+    }
+
+    @Test
+    void getBudgetSummaryCalculatesConsumptionRemainingOverspentStatusesAndAlerts() {
+        YearMonth month = YearMonth.of(2026, 5);
+        budgetOutputPort.budgets.add(budget(1L, month, ExpenseCategory.FOOD, "100.00", true));
+        budgetOutputPort.budgets.add(budget(2L, month, ExpenseCategory.TRANSPORT, "100.00", true));
+        budgetOutputPort.budgets.add(budget(3L, month, ExpenseCategory.ENTERTAINMENT, "100.00", true));
+        budgetOutputPort.budgets.add(budget(4L, YearMonth.of(2026, 6), ExpenseCategory.FOOD, "999.00", true));
+        budgetOutputPort.budgets.add(budget(5L, month, ExpenseCategory.HEALTH, "100.00", false));
+        expenseOutputPort.expenses.add(expense("Groceries", "50.00", LocalDate.of(2026, 5, 2), ExpenseCategory.FOOD));
+        expenseOutputPort.expenses.add(expense("Bus", "80.00", LocalDate.of(2026, 5, 3), ExpenseCategory.TRANSPORT));
+        expenseOutputPort.expenses.add(expense("Movies", "125.00", LocalDate.of(2026, 5, 4), ExpenseCategory.ENTERTAINMENT));
+        expenseOutputPort.expenses.add(expense("Other month", "999.00", LocalDate.of(2026, 6, 1), ExpenseCategory.FOOD));
+
+        BudgetSummary summary = financeUseCase.getBudgetSummary(month);
+
+        assertBigDecimal("300.00", summary.totalLimitAmount());
+        assertBigDecimal("255.00", summary.totalConsumedAmount());
+        assertBigDecimal("70.00", summary.totalRemainingAmount());
+        assertBigDecimal("25.00", summary.totalOverspentAmount());
+        assertBigDecimal("85.00", summary.overallConsumptionPercentage());
+        assertEquals(BudgetStatus.WARNING, summary.status());
+        assertEquals(3, summary.categories().size());
+
+        assertEquals(ExpenseCategory.FOOD, summary.categories().get(0).category());
+        assertBigDecimal("50.00", summary.categories().get(0).consumedAmount());
+        assertBigDecimal("50.00", summary.categories().get(0).remainingAmount());
+        assertBigDecimal("0", summary.categories().get(0).overspentAmount());
+        assertEquals(BudgetStatus.OK, summary.categories().get(0).status());
+        assertTrue(summary.categories().get(0).alerts().isEmpty());
+
+        assertEquals(ExpenseCategory.TRANSPORT, summary.categories().get(1).category());
+        assertBigDecimal("80.00", summary.categories().get(1).consumedAmount());
+        assertEquals(BudgetStatus.WARNING, summary.categories().get(1).status());
+        assertEquals(BudgetAlertType.APPROACHING_LIMIT, summary.categories().get(1).alerts().get(0).type());
+        assertBigDecimal("100.00", summary.categories().get(1).alerts().get(0).limitAmount());
+        assertBigDecimal("80.00", summary.categories().get(1).alerts().get(0).consumedAmount());
+        assertBigDecimal("80", summary.categories().get(1).alerts().get(0).threshold());
+
+        assertEquals(ExpenseCategory.ENTERTAINMENT, summary.categories().get(2).category());
+        assertBigDecimal("125.00", summary.categories().get(2).consumedAmount());
+        assertBigDecimal("0", summary.categories().get(2).remainingAmount());
+        assertBigDecimal("25.00", summary.categories().get(2).overspentAmount());
+        assertBigDecimal("125.00", summary.categories().get(2).consumptionPercentage());
+        assertEquals(BudgetStatus.EXCEEDED, summary.categories().get(2).status());
+        assertEquals(BudgetAlertType.BUDGET_EXCEEDED, summary.categories().get(2).alerts().get(0).type());
+        assertEquals(2, summary.alerts().size());
+    }
+
+    @Test
+    void getBudgetSummaryReturnsSafeValuesForMonthWithoutBudgets() {
+        expenseOutputPort.expenses.add(expense("Groceries", "50.00", LocalDate.of(2026, 5, 2), ExpenseCategory.FOOD));
+
+        BudgetSummary summary = financeUseCase.getBudgetSummary(YearMonth.of(2026, 5));
+
+        assertBigDecimal("0", summary.totalLimitAmount());
+        assertBigDecimal("0", summary.totalConsumedAmount());
+        assertBigDecimal("0", summary.totalRemainingAmount());
+        assertBigDecimal("0", summary.totalOverspentAmount());
+        assertBigDecimal("0", summary.overallConsumptionPercentage());
+        assertEquals(BudgetStatus.OK, summary.status());
+        assertTrue(summary.categories().isEmpty());
+        assertTrue(summary.alerts().isEmpty());
+    }
+
+    @Test
+    void getBudgetSummaryReturnsZeroConsumptionForBudgetWithoutExpenses() {
+        YearMonth month = YearMonth.of(2026, 5);
+        budgetOutputPort.budgets.add(budget(1L, month, ExpenseCategory.FOOD, "100.00", true));
+
+        BudgetSummary summary = financeUseCase.getBudgetSummary(month);
+
+        assertEquals(1, summary.categories().size());
+        assertBigDecimal("0", summary.categories().get(0).consumedAmount());
+        assertBigDecimal("100.00", summary.categories().get(0).remainingAmount());
+        assertBigDecimal("0", summary.categories().get(0).overspentAmount());
+        assertEquals(BudgetStatus.OK, summary.categories().get(0).status());
+        assertTrue(summary.categories().get(0).alerts().isEmpty());
+    }
+
     private Income income(String amount, LocalDate date) {
         return Income.builder()
                 .amount(new BigDecimal(amount))
@@ -673,6 +820,22 @@ class FinanceUseCaseTest {
                 .category(category)
                 .status(status)
                 .monthlySavingRate(monthlySavingRate)
+                .build();
+    }
+
+    private Budget budget(
+            Long id,
+            YearMonth month,
+            ExpenseCategory category,
+            String limitAmount,
+            Boolean active
+    ) {
+        return Budget.builder()
+                .id(id)
+                .month(month)
+                .category(category)
+                .limitAmount(new BigDecimal(limitAmount))
+                .active(active)
                 .build();
     }
 
@@ -842,6 +1005,78 @@ class FinanceUseCaseTest {
         @Override
         public void deleteById(Long id) {
             savingsGoals.removeIf(savingsGoal -> id.equals(savingsGoal.getId()));
+        }
+    }
+
+    private static final class FakeBudgetOutputPort implements BudgetOutputPort {
+
+        private final List<Budget> budgets = new ArrayList<>();
+        private long nextId = 1L;
+
+        @Override
+        public List<Budget> findAll() {
+            return budgets;
+        }
+
+        @Override
+        public List<Budget> findByMonth(YearMonth month) {
+            return budgets.stream()
+                    .filter(budget -> month.equals(budget.getMonth()))
+                    .toList();
+        }
+
+        @Override
+        public List<Budget> findByMonthAndActive(YearMonth month, boolean active) {
+            return budgets.stream()
+                    .filter(budget -> month.equals(budget.getMonth()))
+                    .filter(budget -> Boolean.valueOf(active).equals(budget.getActive()))
+                    .toList();
+        }
+
+        @Override
+        public List<Budget> findByCategory(ExpenseCategory category) {
+            return budgets.stream()
+                    .filter(budget -> category == budget.getCategory())
+                    .toList();
+        }
+
+        @Override
+        public Optional<Budget> findById(Long id) {
+            return budgets.stream()
+                    .filter(budget -> id.equals(budget.getId()))
+                    .findFirst();
+        }
+
+        @Override
+        public boolean existsActiveByMonthAndCategoryExcludingId(
+                YearMonth month,
+                ExpenseCategory category,
+                Long excludedId
+        ) {
+            return budgets.stream()
+                    .filter(budget -> month.equals(budget.getMonth()))
+                    .filter(budget -> category == budget.getCategory())
+                    .filter(budget -> Boolean.TRUE.equals(budget.getActive()))
+                    .anyMatch(budget -> excludedId == null || !excludedId.equals(budget.getId()));
+        }
+
+        @Override
+        public Budget save(Budget budget) {
+            budget.validate();
+            if (budget.getActive() == null) {
+                budget.setActive(Boolean.TRUE);
+            }
+            if (budget.getId() == null) {
+                budget.setId(nextId++);
+            }
+            budgets.removeIf(savedBudget -> budget.getId().equals(savedBudget.getId()));
+            budgets.add(budget);
+            return budget;
+        }
+
+        @Override
+        public void deleteById(Long id) {
+            budgets.removeIf(budget -> id.equals(budget.getId()));
         }
     }
 }

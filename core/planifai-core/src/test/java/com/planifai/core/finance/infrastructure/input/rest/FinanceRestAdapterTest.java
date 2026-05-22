@@ -1,5 +1,8 @@
 package com.planifai.core.finance.infrastructure.input.rest;
 
+import com.planifai.core.dto.BudgetRequest;
+import com.planifai.core.dto.BudgetResponse;
+import com.planifai.core.dto.BudgetSummaryResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -19,6 +22,10 @@ import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalStatus;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
+import com.planifai.core.finance.domain.model.budget.Budget;
+import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetStatus;
+import com.planifai.core.finance.domain.model.budget.BudgetSummary;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
@@ -160,6 +167,49 @@ class FinanceRestAdapterTest {
         assertEquals(200, response.getStatusCode().value());
         assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedMonth);
         assertEquals("2026-05", response.getBody().getMonth());
+    }
+
+    @Test
+    void getFinanceBudgetsParsesMonthAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<List<BudgetResponse>> response = adapter.getFinanceBudgets("2026-05");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedMonth);
+        assertEquals(1, response.getBody().size());
+        assertEquals("2026-05", response.getBody().get(0).getMonth());
+        assertEquals(FinanceCategory.FOOD, response.getBody().get(0).getCategory());
+    }
+
+    @Test
+    void createFinanceBudgetReturnsCreatedResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+        BudgetRequest request = new BudgetRequest("2026-05", FinanceCategory.FOOD, 400.0, true);
+
+        ResponseEntity<BudgetResponse> response = adapter.createFinanceBudget(request);
+
+        assertEquals(201, response.getStatusCode().value());
+        assertEquals(1L, response.getBody().getId());
+        assertEquals("2026-05", response.getBody().getMonth());
+        assertEquals(400.0, response.getBody().getLimitAmount());
+    }
+
+    @Test
+    void getFinanceBudgetSummaryParsesMonthAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<BudgetSummaryResponse> response = adapter.getFinanceBudgetSummary("2026-05");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedMonth);
+        assertEquals("2026-05", response.getBody().getMonth());
+        assertEquals(400.0, response.getBody().getTotalLimitAmount());
+        assertEquals(320.0, response.getBody().getTotalConsumedAmount());
+        assertEquals(com.planifai.core.dto.BudgetStatus.WARNING, response.getBody().getStatus());
     }
 
     @Test
@@ -327,6 +377,61 @@ class FinanceRestAdapterTest {
         }
 
         @Override
+        public List<Budget> getBudgets(YearMonth month) {
+            this.requestedMonth = month;
+            return List.of(budget(month));
+        }
+
+        @Override
+        public BudgetSummary getBudgetSummary(YearMonth month) {
+            this.requestedMonth = month;
+            return BudgetSummary.builder()
+                    .month(month)
+                    .totalLimitAmount(new BigDecimal("400.00"))
+                    .totalConsumedAmount(new BigDecimal("320.00"))
+                    .totalRemainingAmount(new BigDecimal("80.00"))
+                    .totalOverspentAmount(BigDecimal.ZERO)
+                    .overallConsumptionPercentage(new BigDecimal("80.00"))
+                    .status(BudgetStatus.WARNING)
+                    .categories(List.of(BudgetCategoryStatus.builder()
+                            .budgetId(1L)
+                            .category(ExpenseCategory.FOOD)
+                            .limitAmount(new BigDecimal("400.00"))
+                            .consumedAmount(new BigDecimal("320.00"))
+                            .remainingAmount(new BigDecimal("80.00"))
+                            .overspentAmount(BigDecimal.ZERO)
+                            .consumptionPercentage(new BigDecimal("80.00"))
+                            .status(BudgetStatus.WARNING)
+                            .alerts(List.of())
+                            .build()))
+                    .alerts(List.of())
+                    .build();
+        }
+
+        @Override
+        public Budget getBudgetById(Long id) {
+            Budget budget = budget(YearMonth.of(2026, 5));
+            budget.setId(id);
+            return budget;
+        }
+
+        @Override
+        public Budget createBudget(Budget budget) {
+            budget.setId(1L);
+            return budget;
+        }
+
+        @Override
+        public Budget updateBudget(Long id, Budget budget) {
+            budget.setId(id);
+            return budget;
+        }
+
+        @Override
+        public void deleteBudget(Long id) {
+        }
+
+        @Override
         public List<SavingsGoal> getSavingsGoals() {
             return List.of(savingsGoal());
         }
@@ -388,6 +493,16 @@ class FinanceRestAdapterTest {
                     .monthlySavingRate(new BigDecimal("250.00"))
                     .build();
         }
+
+        private Budget budget(YearMonth month) {
+            return Budget.builder()
+                    .id(1L)
+                    .month(month)
+                    .category(ExpenseCategory.FOOD)
+                    .limitAmount(new BigDecimal("400.00"))
+                    .active(true)
+                    .build();
+        }
     }
 
     private static final class TestFinanceRestMapper implements FinanceRestMapper {
@@ -425,6 +540,13 @@ class FinanceRestAdapterTest {
         @Override
         public List<RecurringExpenseResponse> toRecurringExpenseResponse(List<RecurringExpense> recurringExpenses) {
             return List.of();
+        }
+
+        @Override
+        public List<BudgetResponse> toBudgetResponse(List<Budget> budgets) {
+            return budgets.stream()
+                    .map(this::toResponse)
+                    .toList();
         }
 
         @Override
