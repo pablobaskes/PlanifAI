@@ -1,7 +1,7 @@
 package com.planifai.core.finance.application.ports.output;
 
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.ExpenseCategory;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 
 import java.time.LocalDate;
 import java.util.List;

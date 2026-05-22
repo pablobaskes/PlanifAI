@@ -1,11 +1,12 @@
 package com.planifai.core.finance.infrastructure.output.jpa;
 
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
-import com.planifai.core.finance.domain.model.ExpenseCategory;
-import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.RecurringExpenseEntity;
 import com.planifai.core.finance.infrastructure.output.jpa.mapper.RecurringExpenseJpaMapper;
 import com.planifai.core.finance.infrastructure.output.jpa.repository.RecurringExpenseJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -13,18 +14,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
+@RequiredArgsConstructor
 public class RecurringExpenseJpaAdapter implements RecurringExpenseOutputPort {
 
     private final RecurringExpenseJpaRepository recurringExpenseJpaRepository;
     private final RecurringExpenseJpaMapper recurringExpenseJpaMapper;
-
-    public RecurringExpenseJpaAdapter(
-            RecurringExpenseJpaRepository recurringExpenseJpaRepository,
-            RecurringExpenseJpaMapper recurringExpenseJpaMapper
-    ) {
-        this.recurringExpenseJpaRepository = recurringExpenseJpaRepository;
-        this.recurringExpenseJpaMapper = recurringExpenseJpaMapper;
-    }
 
     @Override
     public List<RecurringExpense> findAll() {

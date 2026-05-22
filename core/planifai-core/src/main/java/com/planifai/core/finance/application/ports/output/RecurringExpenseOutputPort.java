@@ -1,7 +1,7 @@
 package com.planifai.core.finance.application.ports.output;
 
-import com.planifai.core.finance.domain.model.ExpenseCategory;
-import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -4,20 +4,20 @@ import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.ExpenseCategory;
-import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
-import com.planifai.core.finance.domain.model.FinanceDashboard;
-import com.planifai.core.finance.domain.model.FinanceHealthStatus;
-import com.planifai.core.finance.domain.model.Income;
-import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
-import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
-import com.planifai.core.finance.domain.model.RecurringExpense;
-import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalCategory;
-import com.planifai.core.finance.domain.model.SavingsGoalStatus;
-import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
+import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.dashboard.FinanceHealthStatus;
+import com.planifai.core.finance.domain.model.transaction.Income;
+import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.recurring.ObligationPaymentStatus;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -613,10 +613,10 @@ class FinanceUseCaseTest {
     }
 
     private Income income(String amount, LocalDate date) {
-        Income income = new Income();
-        income.setAmount(new BigDecimal(amount));
-        income.setIncomeDate(date);
-        return income;
+        return Income.builder()
+                .amount(new BigDecimal(amount))
+                .incomeDate(date)
+                .build();
     }
 
     private Expense expense(String amount, LocalDate date, ExpenseCategory category) {
@@ -624,12 +624,12 @@ class FinanceUseCaseTest {
     }
 
     private Expense expense(String concept, String amount, LocalDate date, ExpenseCategory category) {
-        Expense expense = new Expense();
-        expense.setConcept(concept);
-        expense.setAmount(new BigDecimal(amount));
-        expense.setExpenseDate(date);
-        expense.setCategory(category);
-        return expense;
+        return Expense.builder()
+                .concept(concept)
+                .amount(new BigDecimal(amount))
+                .expenseDate(date)
+                .category(category)
+                .build();
     }
 
     private RecurringExpense recurringExpense(
@@ -643,17 +643,17 @@ class FinanceUseCaseTest {
             LocalDate endDate,
             Boolean active
     ) {
-        RecurringExpense recurringExpense = new RecurringExpense();
-        recurringExpense.setId(id);
-        recurringExpense.setName(name);
-        recurringExpense.setAmount(new BigDecimal(amount));
-        recurringExpense.setCategory(category);
-        recurringExpense.setRecurrence(recurrence);
-        recurringExpense.setPaymentDay(paymentDay);
-        recurringExpense.setStartDate(startDate);
-        recurringExpense.setEndDate(endDate);
-        recurringExpense.setActive(active);
-        return recurringExpense;
+        return RecurringExpense.builder()
+                .id(id)
+                .name(name)
+                .amount(new BigDecimal(amount))
+                .category(category)
+                .recurrence(recurrence)
+                .paymentDay(paymentDay)
+                .startDate(startDate)
+                .endDate(endDate)
+                .active(active)
+                .build();
     }
 
     private SavingsGoal savingsGoal(
@@ -665,15 +665,15 @@ class FinanceUseCaseTest {
             SavingsGoalStatus status,
             BigDecimal monthlySavingRate
     ) {
-        SavingsGoal savingsGoal = new SavingsGoal();
-        savingsGoal.setId(id);
-        savingsGoal.setName(name);
-        savingsGoal.setTargetAmount(new BigDecimal(targetAmount));
-        savingsGoal.setCurrentAmount(new BigDecimal(currentAmount));
-        savingsGoal.setCategory(category);
-        savingsGoal.setStatus(status);
-        savingsGoal.setMonthlySavingRate(monthlySavingRate);
-        return savingsGoal;
+        return SavingsGoal.builder()
+                .id(id)
+                .name(name)
+                .targetAmount(new BigDecimal(targetAmount))
+                .currentAmount(new BigDecimal(currentAmount))
+                .category(category)
+                .status(status)
+                .monthlySavingRate(monthlySavingRate)
+                .build();
     }
 
     private void assertBreakdown(

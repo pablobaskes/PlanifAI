@@ -6,6 +6,7 @@ import com.planifai.core.dto.TaskResponse;
 import com.planifai.core.tasks.application.ports.input.TaskInputPort;
 import com.planifai.core.tasks.domain.model.Task;
 import com.planifai.core.tasks.infrastructure.input.rest.mapper.TaskRestMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,15 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
+@RequiredArgsConstructor
 public class TaskRestAdapter implements TasksApi {
 
     private final TaskInputPort taskInputPort;
     private final TaskRestMapper taskRestMapper;
-
-    public TaskRestAdapter(TaskInputPort taskInputPort, TaskRestMapper taskRestMapper) {
-        this.taskInputPort = taskInputPort;
-        this.taskRestMapper = taskRestMapper;
-    }
 
     @Override
     public ResponseEntity<List<TaskResponse>> getTasks() {

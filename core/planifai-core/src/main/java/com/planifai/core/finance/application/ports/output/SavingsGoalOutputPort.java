@@ -1,8 +1,8 @@
 package com.planifai.core.finance.application.ports.output;
 
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalCategory;
-import com.planifai.core.finance.domain.model.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
 
 import java.util.List;
 import java.util.Optional;

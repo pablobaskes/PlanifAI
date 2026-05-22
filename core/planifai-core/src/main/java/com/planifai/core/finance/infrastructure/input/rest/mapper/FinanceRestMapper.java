@@ -16,17 +16,22 @@ import com.planifai.core.dto.SavingsGoalRequest;
 import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.dto.UpcomingPaymentItem;
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
-import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
-import com.planifai.core.finance.domain.model.FinanceDashboard;
-import com.planifai.core.finance.domain.model.Income;
-import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
-import com.planifai.core.finance.domain.model.RecurringExpense;
-import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
-import com.planifai.core.finance.domain.model.UpcomingPayment;
+import com.planifai.core.finance.domain.FinanceConstants;
+import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistic;
+import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
+import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.transaction.Income;
+import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.recurring.UpcomingPayment;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -56,17 +61,17 @@ public interface FinanceRestMapper {
             return null;
         }
 
-        RecurringExpense recurringExpense = new RecurringExpense();
-        recurringExpense.setName(request.getName());
-        recurringExpense.setAmount(toBigDecimal(request.getAmount()));
-        recurringExpense.setCategory(toDomain(request.getCategory()));
-        recurringExpense.setRecurrence(toDomain(request.getRecurrence()));
-        recurringExpense.setPaymentDay(request.getPaymentDay());
-        recurringExpense.setStartDate(request.getStartDate());
-        recurringExpense.setEndDate(request.getEndDate());
-        recurringExpense.setActive(request.getActive());
-        recurringExpense.setNotes(request.getNotes());
-        return recurringExpense;
+        return RecurringExpense.builder()
+                .name(request.getName())
+                .amount(toBigDecimal(request.getAmount()))
+                .category(toDomain(request.getCategory()))
+                .recurrence(toDomain(request.getRecurrence()))
+                .paymentDay(request.getPaymentDay())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .active(request.getActive())
+                .notes(request.getNotes())
+                .build();
     }
 
     default RecurringExpenseResponse toResponse(RecurringExpense recurringExpense) {
@@ -90,16 +95,16 @@ public interface FinanceRestMapper {
             return null;
         }
 
-        SavingsGoal savingsGoal = new SavingsGoal();
-        savingsGoal.setName(request.getName());
-        savingsGoal.setTargetAmount(toBigDecimal(request.getTargetAmount()));
-        savingsGoal.setCurrentAmount(toBigDecimal(request.getCurrentAmount()));
-        savingsGoal.setTargetDate(request.getTargetDate());
-        savingsGoal.setCategory(toDomain(request.getCategory()));
-        savingsGoal.setStatus(toDomain(request.getStatus()));
-        savingsGoal.setMonthlySavingRate(toBigDecimal(request.getMonthlySavingRate()));
-        savingsGoal.setNotes(request.getNotes());
-        return savingsGoal;
+        return SavingsGoal.builder()
+                .name(request.getName())
+                .targetAmount(toBigDecimal(request.getTargetAmount()))
+                .currentAmount(toBigDecimal(request.getCurrentAmount()))
+                .targetDate(request.getTargetDate())
+                .category(toDomain(request.getCategory()))
+                .status(toDomain(request.getStatus()))
+                .monthlySavingRate(toBigDecimal(request.getMonthlySavingRate()))
+                .notes(request.getNotes())
+                .build();
     }
 
     default SavingsGoalResponse toResponse(SavingsGoal savingsGoal) {
@@ -195,7 +200,7 @@ public interface FinanceRestMapper {
     }
 
     default com.planifai.core.dto.ExpenseCategoryBreakdown toResponse(
-            com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown breakdown
+            ExpenseCategoryBreakdown breakdown
     ) {
         return new com.planifai.core.dto.ExpenseCategoryBreakdown()
                 .category(FinanceCategory.valueOf(breakdown.category().name()))
@@ -211,16 +216,16 @@ public interface FinanceRestMapper {
         return value != null ? BigDecimal.valueOf(value) : null;
     }
 
-    default com.planifai.core.finance.domain.model.ExpenseCategory toDomain(
+    default ExpenseCategory toDomain(
             FinanceCategory category
     ) {
         return category != null
-                ? com.planifai.core.finance.domain.model.ExpenseCategory.valueOf(category.name())
+                ? ExpenseCategory.valueOf(category.name())
                 : null;
     }
 
     private FinanceCategory toResponse(
-            com.planifai.core.finance.domain.model.ExpenseCategory category
+            ExpenseCategory category
     ) {
         return category != null
                 ? FinanceCategory.valueOf(category.name())
@@ -232,7 +237,7 @@ public interface FinanceRestMapper {
             return null;
         }
         if (recurrence == com.planifai.core.dto.Recurrence.ONE_OFF) {
-            throw new IllegalArgumentException("Recurring expense recurrence must be MONTHLY or YEARLY.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_RECURRENCE_UNSUPPORTED);
         }
         return RecurringExpenseRecurrence.valueOf(recurrence.name());
     }
@@ -243,32 +248,32 @@ public interface FinanceRestMapper {
                 : null;
     }
 
-    private com.planifai.core.finance.domain.model.SavingsGoalCategory toDomain(
+    private SavingsGoalCategory toDomain(
             com.planifai.core.dto.SavingsGoalCategory category
     ) {
         return category != null
-                ? com.planifai.core.finance.domain.model.SavingsGoalCategory.valueOf(category.name())
+                ? SavingsGoalCategory.valueOf(category.name())
                 : null;
     }
 
     private com.planifai.core.dto.SavingsGoalCategory toResponse(
-            com.planifai.core.finance.domain.model.SavingsGoalCategory category
+            SavingsGoalCategory category
     ) {
         return category != null
                 ? com.planifai.core.dto.SavingsGoalCategory.valueOf(category.name())
                 : null;
     }
 
-    private com.planifai.core.finance.domain.model.SavingsGoalStatus toDomain(
+    private SavingsGoalStatus toDomain(
             com.planifai.core.dto.SavingsGoalStatus status
     ) {
         return status != null
-                ? com.planifai.core.finance.domain.model.SavingsGoalStatus.valueOf(status.name())
+                ? SavingsGoalStatus.valueOf(status.name())
                 : null;
     }
 
     private com.planifai.core.dto.SavingsGoalStatus toResponse(
-            com.planifai.core.finance.domain.model.SavingsGoalStatus status
+            SavingsGoalStatus status
     ) {
         return status != null
                 ? com.planifai.core.dto.SavingsGoalStatus.valueOf(status.name())

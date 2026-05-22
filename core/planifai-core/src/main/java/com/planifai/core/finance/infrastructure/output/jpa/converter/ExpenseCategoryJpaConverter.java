@@ -1,6 +1,6 @@
 package com.planifai.core.finance.infrastructure.output.jpa.converter;
 
-import com.planifai.core.finance.domain.model.ExpenseCategory;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 

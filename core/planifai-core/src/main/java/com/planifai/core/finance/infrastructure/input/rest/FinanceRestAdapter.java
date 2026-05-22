@@ -15,34 +15,33 @@ import com.planifai.core.dto.RecurringExpenseResponse;
 import com.planifai.core.dto.SavingsGoalRequest;
 import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
-import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
-import com.planifai.core.finance.application.SavingsGoalNotFoundException;
+import com.planifai.core.finance.domain.FinanceConstants;
+import com.planifai.core.finance.domain.exception.RecurringExpenseNotFoundException;
+import com.planifai.core.finance.domain.exception.SavingsGoalNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
-import com.planifai.core.finance.domain.model.FinanceDashboard;
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.Income;
-import com.planifai.core.finance.domain.model.RecurringExpense;
-import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.transaction.Income;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.DateTimeException;
 import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 @RestController
+@RequiredArgsConstructor
 public class FinanceRestAdapter implements FinanceApi {
 
     private final FinanceInputPort financeInputPort;
     private final FinanceRestMapper financeRestMapper;
-
-    public FinanceRestAdapter(FinanceInputPort financeInputPort, FinanceRestMapper financeRestMapper) {
-        this.financeInputPort = financeInputPort;
-        this.financeRestMapper = financeRestMapper;
-    }
 
     @Override
     public ResponseEntity<List<ExpenseResponse>> getExpenses(FinanceCategory category) {
@@ -85,8 +84,12 @@ public class FinanceRestAdapter implements FinanceApi {
 
     @Override
     public ResponseEntity<FinanceDashboardResponse> getFinanceDashboard(String month) {
-        FinanceDashboard dashboard = financeInputPort.getDashboard(YearMonth.parse(month));
-        return ResponseEntity.ok(financeRestMapper.toResponse(dashboard));
+        try {
+            FinanceDashboard dashboard = financeInputPort.getDashboard(parseMonth(month));
+            return ResponseEntity.ok(financeRestMapper.toResponse(dashboard));
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     @Override
@@ -102,7 +105,7 @@ public class FinanceRestAdapter implements FinanceApi {
     public ResponseEntity<FinanceCategoryStatisticsResponse> getFinanceCategoryStatistics(String month) {
         try {
             return ResponseEntity.ok(financeRestMapper.toResponse(
-                    financeInputPort.getCategoryStatistics(YearMonth.parse(month))
+                    financeInputPort.getCategoryStatistics(parseMonth(month))
             ));
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
@@ -219,7 +222,7 @@ public class FinanceRestAdapter implements FinanceApi {
     public ResponseEntity<MonthlyObligationsSummaryResponse> getMonthlyObligationsSummary(String month) {
         try {
             return ResponseEntity.ok(financeRestMapper.toResponse(
-                    financeInputPort.getMonthlyObligationsSummary(YearMonth.parse(month))
+                    financeInputPort.getMonthlyObligationsSummary(parseMonth(month))
             ));
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().build();
@@ -229,5 +232,13 @@ public class FinanceRestAdapter implements FinanceApi {
     private String toCategoryLabel(FinanceCategory category) {
         String value = category.name().toLowerCase(Locale.ROOT).replace('_', ' ');
         return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+    }
+
+    private YearMonth parseMonth(String month) {
+        try {
+            return YearMonth.parse(month);
+        } catch (DateTimeException exception) {
+            throw new IllegalArgumentException(FinanceConstants.INVALID_MONTH, exception);
+        }
     }
 }

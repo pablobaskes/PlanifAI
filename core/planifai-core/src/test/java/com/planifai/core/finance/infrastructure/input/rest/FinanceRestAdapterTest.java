@@ -19,16 +19,16 @@ import com.planifai.core.dto.SavingsGoalResponse;
 import com.planifai.core.dto.SavingsGoalStatus;
 import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.ExpenseCategory;
-import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
-import com.planifai.core.finance.domain.model.FinanceDashboard;
-import com.planifai.core.finance.domain.model.FinanceHealthStatus;
-import com.planifai.core.finance.domain.model.Income;
-import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
-import com.planifai.core.finance.domain.model.RecurringExpense;
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
+import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.dashboard.FinanceHealthStatus;
+import com.planifai.core.finance.domain.model.transaction.Income;
+import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -269,35 +269,39 @@ class FinanceRestAdapterTest {
         @Override
         public FinanceDashboard getDashboard(YearMonth month) {
             this.requestedMonth = month;
-            return new FinanceDashboard(
-                    month,
-                    new BigDecimal("1000.00"),
-                    new BigDecimal("900.00"),
-                    new BigDecimal("100.00"),
-                    new BigDecimal("100.00"),
-                    new BigDecimal("10.00"),
-                    FinanceHealthStatus.WARNING,
-                    List.of()
-            );
+            return FinanceDashboard.builder()
+                    .month(month)
+                    .totalIncome(new BigDecimal("1000.00"))
+                    .totalExpenses(new BigDecimal("900.00"))
+                    .netBalance(new BigDecimal("100.00"))
+                    .savingsAmount(new BigDecimal("100.00"))
+                    .savingsRate(new BigDecimal("10.00"))
+                    .healthStatus(FinanceHealthStatus.WARNING)
+                    .expensesByCategory(List.of())
+                    .build();
         }
 
         @Override
         public FinanceCategoryStatistics getCategoryStatistics(YearMonth month) {
             this.requestedMonth = month;
-            return new FinanceCategoryStatistics(month, BigDecimal.ZERO, List.of());
+            return FinanceCategoryStatistics.builder()
+                    .month(month)
+                    .totalExpenses(BigDecimal.ZERO)
+                    .categories(List.of())
+                    .build();
         }
 
         @Override
         public MonthlyObligationsSummary getMonthlyObligationsSummary(YearMonth month) {
             this.requestedMonth = month;
-            return new MonthlyObligationsSummary(
-                    month,
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO,
-                    BigDecimal.ZERO,
-                    List.of()
-            );
+            return MonthlyObligationsSummary.builder()
+                    .month(month)
+                    .totalRecurringObligations(BigDecimal.ZERO)
+                    .pendingObligations(BigDecimal.ZERO)
+                    .paidOrRegisteredObligations(BigDecimal.ZERO)
+                    .realAvailableMoney(BigDecimal.ZERO)
+                    .upcomingPayments(List.of())
+                    .build();
         }
 
         @Override
@@ -334,21 +338,21 @@ class FinanceRestAdapterTest {
 
         @Override
         public SavingsGoalsSummary getSavingsGoalsSummary() {
-            return new SavingsGoalsSummary(
-                    2,
-                    1,
-                    1,
-                    0,
-                    0,
-                    new BigDecimal("3000.00"),
-                    new BigDecimal("1500.00"),
-                    new BigDecimal("1500.00"),
-                    new BigDecimal("50.00"),
-                    new BigDecimal("250.00"),
-                    6,
-                    LocalDate.of(2026, 11, 22),
-                    savingsGoal()
-            );
+            return SavingsGoalsSummary.builder()
+                    .totalGoals(2)
+                    .activeGoals(1)
+                    .completedGoals(1)
+                    .pausedGoals(0)
+                    .cancelledGoals(0)
+                    .totalTargetAmount(new BigDecimal("3000.00"))
+                    .totalCurrentAmount(new BigDecimal("1500.00"))
+                    .totalRemainingAmount(new BigDecimal("1500.00"))
+                    .overallProgressPercentage(new BigDecimal("50.00"))
+                    .monthlySavingRate(new BigDecimal("250.00"))
+                    .estimatedMonthsToCompletion(6)
+                    .estimatedCompletionDate(LocalDate.of(2026, 11, 22))
+                    .nearestGoalToComplete(savingsGoal())
+                    .build();
         }
 
         @Override
@@ -379,15 +383,15 @@ class FinanceRestAdapterTest {
         }
 
         private SavingsGoal savingsGoal() {
-            SavingsGoal savingsGoal = new SavingsGoal();
-            savingsGoal.setId(1L);
-            savingsGoal.setName("Travel");
-            savingsGoal.setTargetAmount(new BigDecimal("2000.00"));
-            savingsGoal.setCurrentAmount(new BigDecimal("500.00"));
-            savingsGoal.setCategory(com.planifai.core.finance.domain.model.SavingsGoalCategory.TRAVEL);
-            savingsGoal.setStatus(com.planifai.core.finance.domain.model.SavingsGoalStatus.ACTIVE);
-            savingsGoal.setMonthlySavingRate(new BigDecimal("250.00"));
-            return savingsGoal;
+            return SavingsGoal.builder()
+                    .id(1L)
+                    .name("Travel")
+                    .targetAmount(new BigDecimal("2000.00"))
+                    .currentAmount(new BigDecimal("500.00"))
+                    .category(com.planifai.core.finance.domain.model.goal.SavingsGoalCategory.TRAVEL)
+                    .status(com.planifai.core.finance.domain.model.goal.SavingsGoalStatus.ACTIVE)
+                    .monthlySavingRate(new BigDecimal("250.00"))
+                    .build();
         }
     }
 

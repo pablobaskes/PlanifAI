@@ -1,6 +1,6 @@
 package com.planifai.core.finance.application.ports.output;
 
-import com.planifai.core.finance.domain.model.Income;
+import com.planifai.core.finance.domain.model.transaction.Income;
 
 import java.time.LocalDate;
 import java.util.List;

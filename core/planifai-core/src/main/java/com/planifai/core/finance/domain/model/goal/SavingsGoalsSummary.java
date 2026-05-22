@@ -1,8 +1,11 @@
-package com.planifai.core.finance.domain.model;
+package com.planifai.core.finance.domain.model.goal;
+
+import lombok.Builder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
+@Builder
 public record SavingsGoalsSummary(
         Integer totalGoals,
         Integer activeGoals,

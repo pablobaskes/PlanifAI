@@ -5,20 +5,17 @@ import com.planifai.core.tasks.domain.model.Task;
 import com.planifai.core.tasks.infrastructure.output.jpa.entity.TaskEntity;
 import com.planifai.core.tasks.infrastructure.output.jpa.mapper.TaskJpaMapper;
 import com.planifai.core.tasks.infrastructure.output.jpa.repository.TaskJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
+@RequiredArgsConstructor
 public class TaskJpaAdapter implements TaskOutputPort {
 
     private final TaskJpaRepository taskJpaRepository;
     private final TaskJpaMapper taskJpaMapper;
-
-    public TaskJpaAdapter(TaskJpaRepository taskJpaRepository, TaskJpaMapper taskJpaMapper) {
-        this.taskJpaRepository = taskJpaRepository;
-        this.taskJpaMapper = taskJpaMapper;
-    }
 
     @Override
     public List<Task> findAll() {

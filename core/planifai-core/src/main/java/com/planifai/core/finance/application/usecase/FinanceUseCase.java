@@ -1,30 +1,32 @@
 package com.planifai.core.finance.application.usecase;
 
-import com.planifai.core.finance.application.RecurringExpenseNotFoundException;
-import com.planifai.core.finance.application.SavingsGoalNotFoundException;
+import com.planifai.core.finance.domain.exception.RecurringExpenseNotFoundException;
+import com.planifai.core.finance.domain.exception.SavingsGoalNotFoundException;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.application.ports.output.ExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.IncomeOutputPort;
 import com.planifai.core.finance.application.ports.output.RecurringExpenseOutputPort;
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
-import com.planifai.core.finance.domain.model.Expense;
-import com.planifai.core.finance.domain.model.ExpenseCategoryBreakdown;
-import com.planifai.core.finance.domain.model.FinanceDashboard;
-import com.planifai.core.finance.domain.model.FinanceCategoryStatistic;
-import com.planifai.core.finance.domain.model.FinanceCategoryStatistics;
-import com.planifai.core.finance.domain.model.FinanceHealthStatus;
-import com.planifai.core.finance.domain.model.ExpenseCategory;
-import com.planifai.core.finance.domain.model.Income;
-import com.planifai.core.finance.domain.model.IncomeCategory;
-import com.planifai.core.finance.domain.model.MonthlyObligationsSummary;
-import com.planifai.core.finance.domain.model.ObligationPaymentStatus;
-import com.planifai.core.finance.domain.model.Recurrence;
-import com.planifai.core.finance.domain.model.RecurringExpense;
-import com.planifai.core.finance.domain.model.RecurringExpenseRecurrence;
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalStatus;
-import com.planifai.core.finance.domain.model.SavingsGoalsSummary;
-import com.planifai.core.finance.domain.model.UpcomingPayment;
+import com.planifai.core.finance.domain.model.transaction.Expense;
+import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
+import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistic;
+import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
+import com.planifai.core.finance.domain.model.dashboard.FinanceHealthStatus;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.transaction.Income;
+import com.planifai.core.finance.domain.model.transaction.IncomeCategory;
+import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
+import com.planifai.core.finance.domain.model.recurring.ObligationPaymentStatus;
+import com.planifai.core.finance.domain.model.transaction.Recurrence;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpenseRecurrence;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.recurring.UpcomingPayment;
+import com.planifai.core.finance.domain.FinanceConstants;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -37,24 +39,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class FinanceUseCase implements FinanceInputPort {
 
     private final ExpenseOutputPort expenseOutputPort;
     private final IncomeOutputPort incomeOutputPort;
     private final RecurringExpenseOutputPort recurringExpenseOutputPort;
     private final SavingsGoalOutputPort savingsGoalOutputPort;
-
-    public FinanceUseCase(
-            ExpenseOutputPort expenseOutputPort,
-            IncomeOutputPort incomeOutputPort,
-            RecurringExpenseOutputPort recurringExpenseOutputPort,
-            SavingsGoalOutputPort savingsGoalOutputPort
-    ) {
-        this.expenseOutputPort = expenseOutputPort;
-        this.incomeOutputPort = incomeOutputPort;
-        this.recurringExpenseOutputPort = recurringExpenseOutputPort;
-        this.savingsGoalOutputPort = savingsGoalOutputPort;
-    }
 
     @Override
     public List<Expense> getExpenses() {
@@ -102,7 +93,7 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public FinanceDashboard getDashboard(YearMonth month) {
         if (month == null) {
-            throw new IllegalArgumentException("Dashboard month is required.");
+            throw new IllegalArgumentException(FinanceConstants.DASHBOARD_MONTH_REQUIRED);
         }
 
         LocalDate from = month.atDay(1);
@@ -117,22 +108,22 @@ public class FinanceUseCase implements FinanceInputPort {
         BigDecimal savingsRate = calculateSavingsRate(savingsAmount, totalIncome);
         FinanceHealthStatus healthStatus = calculateHealthStatus(totalIncome, totalExpenses, netBalance, savingsRate);
 
-        return new FinanceDashboard(
-                month,
-                totalIncome,
-                totalExpenses,
-                netBalance,
-                savingsAmount,
-                savingsRate,
-                healthStatus,
-                buildExpenseBreakdown(expenses, totalExpenses)
-        );
+        return FinanceDashboard.builder()
+                .month(month)
+                .totalIncome(totalIncome)
+                .totalExpenses(totalExpenses)
+                .netBalance(netBalance)
+                .savingsAmount(savingsAmount)
+                .savingsRate(savingsRate)
+                .healthStatus(healthStatus)
+                .expensesByCategory(buildExpenseBreakdown(expenses, totalExpenses))
+                .build();
     }
 
     @Override
     public FinanceCategoryStatistics getCategoryStatistics(YearMonth month) {
         if (month == null) {
-            throw new IllegalArgumentException("Category statistics month is required.");
+            throw new IllegalArgumentException(FinanceConstants.CATEGORY_STATISTICS_MONTH_REQUIRED);
         }
 
         LocalDate from = month.atDay(1);
@@ -140,17 +131,17 @@ public class FinanceUseCase implements FinanceInputPort {
         List<Expense> expenses = expenseOutputPort.findByExpenseDateBetween(from, to);
         BigDecimal totalExpenses = sumExpenses(expenses);
 
-        return new FinanceCategoryStatistics(
-                month,
-                totalExpenses,
-                buildCategoryStatistics(expenses, totalExpenses)
-        );
+        return FinanceCategoryStatistics.builder()
+                .month(month)
+                .totalExpenses(totalExpenses)
+                .categories(buildCategoryStatistics(expenses, totalExpenses))
+                .build();
     }
 
     @Override
     public MonthlyObligationsSummary getMonthlyObligationsSummary(YearMonth month) {
         if (month == null) {
-            throw new IllegalArgumentException("Obligations summary month is required.");
+            throw new IllegalArgumentException(FinanceConstants.OBLIGATIONS_SUMMARY_MONTH_REQUIRED);
         }
 
         LocalDate periodStart = month.atDay(1);
@@ -179,14 +170,14 @@ public class FinanceUseCase implements FinanceInputPort {
         BigDecimal currentBalance = sumIncomes(incomes).subtract(sumExpenses(expenses));
         BigDecimal realAvailableMoney = currentBalance.subtract(pendingObligations);
 
-        return new MonthlyObligationsSummary(
-                month,
-                totalRecurringObligations,
-                pendingObligations,
-                paidOrRegisteredObligations,
-                realAvailableMoney,
-                upcomingPayments
-        );
+        return MonthlyObligationsSummary.builder()
+                .month(month)
+                .totalRecurringObligations(totalRecurringObligations)
+                .pendingObligations(pendingObligations)
+                .paidOrRegisteredObligations(paidOrRegisteredObligations)
+                .realAvailableMoney(realAvailableMoney)
+                .upcomingPayments(upcomingPayments)
+                .build();
     }
 
     @Override
@@ -214,7 +205,7 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public RecurringExpense updateRecurringExpense(Long id, RecurringExpense recurringExpense) {
         if (id == null) {
-            throw new IllegalArgumentException("Recurring expense id is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_ID_REQUIRED);
         }
         if (recurringExpenseOutputPort.findById(id).isEmpty()) {
             throw new RecurringExpenseNotFoundException(id);
@@ -230,7 +221,7 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public void deleteRecurringExpense(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("Recurring expense id is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_ID_REQUIRED);
         }
         if (recurringExpenseOutputPort.findById(id).isEmpty()) {
             throw new RecurringExpenseNotFoundException(id);
@@ -265,27 +256,27 @@ public class FinanceUseCase implements FinanceInputPort {
                 monthlySavingRate
         );
 
-        return new SavingsGoalsSummary(
-                savingsGoals.size(),
-                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.ACTIVE),
-                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.COMPLETED),
-                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.PAUSED),
-                countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.CANCELLED),
-                totalTargetAmount,
-                totalCurrentAmount,
-                totalRemainingAmount,
-                calculateOverallSavingsGoalProgress(totalCurrentAmount, totalTargetAmount),
-                monthlySavingRate,
-                estimatedMonthsToCompletion,
-                calculateSummaryEstimatedCompletionDate(estimatedMonthsToCompletion),
-                findNearestGoalToComplete(savingsGoals)
-        );
+        return SavingsGoalsSummary.builder()
+                .totalGoals(savingsGoals.size())
+                .activeGoals(countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.ACTIVE))
+                .completedGoals(countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.COMPLETED))
+                .pausedGoals(countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.PAUSED))
+                .cancelledGoals(countSavingsGoalsByStatus(savingsGoals, SavingsGoalStatus.CANCELLED))
+                .totalTargetAmount(totalTargetAmount)
+                .totalCurrentAmount(totalCurrentAmount)
+                .totalRemainingAmount(totalRemainingAmount)
+                .overallProgressPercentage(calculateOverallSavingsGoalProgress(totalCurrentAmount, totalTargetAmount))
+                .monthlySavingRate(monthlySavingRate)
+                .estimatedMonthsToCompletion(estimatedMonthsToCompletion)
+                .estimatedCompletionDate(calculateSummaryEstimatedCompletionDate(estimatedMonthsToCompletion))
+                .nearestGoalToComplete(findNearestGoalToComplete(savingsGoals))
+                .build();
     }
 
     @Override
     public SavingsGoal getSavingsGoalById(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("Savings goal id is required.");
+            throw new IllegalArgumentException(FinanceConstants.SAVINGS_GOAL_ID_REQUIRED);
         }
         SavingsGoal savingsGoal = savingsGoalOutputPort.findById(id)
                 .orElseThrow(() -> new SavingsGoalNotFoundException(id));
@@ -304,7 +295,7 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public SavingsGoal updateSavingsGoal(Long id, SavingsGoal savingsGoal) {
         if (id == null) {
-            throw new IllegalArgumentException("Savings goal id is required.");
+            throw new IllegalArgumentException(FinanceConstants.SAVINGS_GOAL_ID_REQUIRED);
         }
         SavingsGoal existingSavingsGoal = savingsGoalOutputPort.findById(id)
                 .orElseThrow(() -> new SavingsGoalNotFoundException(id));
@@ -319,7 +310,7 @@ public class FinanceUseCase implements FinanceInputPort {
     @Override
     public void deleteSavingsGoal(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("Savings goal id is required.");
+            throw new IllegalArgumentException(FinanceConstants.SAVINGS_GOAL_ID_REQUIRED);
         }
         if (savingsGoalOutputPort.findById(id).isEmpty()) {
             throw new SavingsGoalNotFoundException(id);
@@ -329,64 +320,64 @@ public class FinanceUseCase implements FinanceInputPort {
 
     private void validateExpense(Expense expense) {
         if (expense == null) {
-            throw new IllegalArgumentException("Expense is required.");
+            throw new IllegalArgumentException(FinanceConstants.EXPENSE_REQUIRED);
         }
         if (expense.getConcept() == null || expense.getConcept().isBlank()) {
-            throw new IllegalArgumentException("Expense concept is required.");
+            throw new IllegalArgumentException(FinanceConstants.EXPENSE_CONCEPT_REQUIRED);
         }
-        validateAmount(expense.getAmount(), "Expense amount must be positive.");
+        validateAmount(expense.getAmount(), FinanceConstants.EXPENSE_AMOUNT_POSITIVE);
         if (expense.getExpenseDate() == null) {
-            throw new IllegalArgumentException("Expense date is required.");
+            throw new IllegalArgumentException(FinanceConstants.EXPENSE_DATE_REQUIRED);
         }
         if (expense.getCategory() == null) {
-            throw new IllegalArgumentException("Expense category is required.");
+            throw new IllegalArgumentException(FinanceConstants.EXPENSE_CATEGORY_REQUIRED);
         }
     }
 
     private void validateIncome(Income income) {
         if (income == null) {
-            throw new IllegalArgumentException("Income is required.");
+            throw new IllegalArgumentException(FinanceConstants.INCOME_REQUIRED);
         }
         if (income.getSource() == null || income.getSource().isBlank()) {
-            throw new IllegalArgumentException("Income source is required.");
+            throw new IllegalArgumentException(FinanceConstants.INCOME_SOURCE_REQUIRED);
         }
-        validateAmount(income.getAmount(), "Income amount must be positive.");
+        validateAmount(income.getAmount(), FinanceConstants.INCOME_AMOUNT_POSITIVE);
         if (income.getIncomeDate() == null) {
-            throw new IllegalArgumentException("Income date is required.");
+            throw new IllegalArgumentException(FinanceConstants.INCOME_DATE_REQUIRED);
         }
     }
 
     private void validateRecurringExpense(RecurringExpense recurringExpense) {
         if (recurringExpense == null) {
-            throw new IllegalArgumentException("Recurring expense is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_REQUIRED);
         }
         if (recurringExpense.getName() == null || recurringExpense.getName().isBlank()) {
-            throw new IllegalArgumentException("Recurring expense name is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_NAME_REQUIRED);
         }
-        validateAmount(recurringExpense.getAmount(), "Recurring expense amount must be positive.");
+        validateAmount(recurringExpense.getAmount(), FinanceConstants.RECURRING_EXPENSE_AMOUNT_POSITIVE);
         if (recurringExpense.getRecurrence() == null) {
-            throw new IllegalArgumentException("Recurring expense recurrence is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_RECURRENCE_REQUIRED);
         }
         if (recurringExpense.getCategory() == null) {
-            throw new IllegalArgumentException("Recurring expense category is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_CATEGORY_REQUIRED);
         }
         if (recurringExpense.getPaymentDay() == null
-                || recurringExpense.getPaymentDay() < 1
-                || recurringExpense.getPaymentDay() > 31) {
-            throw new IllegalArgumentException("Recurring expense payment day must be between 1 and 31.");
+                || recurringExpense.getPaymentDay() < FinanceConstants.MIN_PAYMENT_DAY
+                || recurringExpense.getPaymentDay() > FinanceConstants.MAX_PAYMENT_DAY) {
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_PAYMENT_DAY_RANGE);
         }
         if (recurringExpense.getStartDate() == null) {
-            throw new IllegalArgumentException("Recurring expense start date is required.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_START_DATE_REQUIRED);
         }
         if (recurringExpense.getEndDate() != null
                 && recurringExpense.getEndDate().isBefore(recurringExpense.getStartDate())) {
-            throw new IllegalArgumentException("Recurring expense end date cannot be before start date.");
+            throw new IllegalArgumentException(FinanceConstants.RECURRING_EXPENSE_END_DATE_BEFORE_START);
         }
     }
 
     private void validateSavingsGoal(SavingsGoal savingsGoal) {
         if (savingsGoal == null) {
-            throw new IllegalArgumentException("Savings goal is required.");
+            throw new IllegalArgumentException(FinanceConstants.SAVINGS_GOAL_REQUIRED);
         }
         savingsGoal.validate();
     }
@@ -460,9 +451,9 @@ public class FinanceUseCase implements FinanceInputPort {
             return BigDecimal.ZERO;
         }
         BigDecimal progress = totalCurrentAmount
-                .multiply(BigDecimal.valueOf(100))
+                .multiply(FinanceConstants.MAX_PERCENTAGE)
                 .divide(totalTargetAmount, 2, RoundingMode.HALF_UP);
-        return progress.compareTo(BigDecimal.valueOf(100)) > 0 ? BigDecimal.valueOf(100) : progress;
+        return progress.compareTo(FinanceConstants.MAX_PERCENTAGE) > 0 ? FinanceConstants.MAX_PERCENTAGE : progress;
     }
 
     private BigDecimal calculateSummaryMonthlySavingRate(
@@ -511,8 +502,8 @@ public class FinanceUseCase implements FinanceInputPort {
                 || !Boolean.TRUE.equals(recurringExpense.getActive())
                 || recurringExpense.getStartDate() == null
                 || recurringExpense.getPaymentDay() == null
-                || recurringExpense.getPaymentDay() < 1
-                || recurringExpense.getPaymentDay() > 31
+                || recurringExpense.getPaymentDay() < FinanceConstants.MIN_PAYMENT_DAY
+                || recurringExpense.getPaymentDay() > FinanceConstants.MAX_PAYMENT_DAY
                 || recurringExpense.getRecurrence() == null) {
             return false;
         }
@@ -539,15 +530,15 @@ public class FinanceUseCase implements FinanceInputPort {
                 ? ObligationPaymentStatus.PAID_OR_REGISTERED
                 : ObligationPaymentStatus.PENDING;
 
-        return new UpcomingPayment(
-                recurringExpense.getId(),
-                recurringExpense.getName(),
-                recurringExpense.getAmount(),
-                recurringExpense.getCategory(),
-                projectedDueDate(recurringExpense, month),
-                recurringExpense.getPaymentDay(),
-                status
-        );
+        return UpcomingPayment.builder()
+                .recurringExpenseId(recurringExpense.getId())
+                .name(recurringExpense.getName())
+                .amount(recurringExpense.getAmount())
+                .category(recurringExpense.getCategory())
+                .dueDate(projectedDueDate(recurringExpense, month))
+                .paymentDay(recurringExpense.getPaymentDay())
+                .status(status)
+                .build();
     }
 
     private LocalDate projectedDueDate(RecurringExpense recurringExpense, YearMonth month) {
@@ -622,7 +613,7 @@ public class FinanceUseCase implements FinanceInputPort {
             return BigDecimal.ZERO;
         }
         return savingsAmount
-                .multiply(BigDecimal.valueOf(100))
+                .multiply(FinanceConstants.MAX_PERCENTAGE)
                 .divide(totalIncome, 2, RoundingMode.HALF_UP);
     }
 
@@ -635,7 +626,8 @@ public class FinanceUseCase implements FinanceInputPort {
         if (totalIncome.compareTo(BigDecimal.ZERO) == 0 && totalExpenses.compareTo(BigDecimal.ZERO) == 0) {
             return FinanceHealthStatus.NO_DATA;
         }
-        if (netBalance.compareTo(BigDecimal.ZERO) > 0 && savingsRate.compareTo(BigDecimal.valueOf(20)) >= 0) {
+        if (netBalance.compareTo(BigDecimal.ZERO) > 0
+                && savingsRate.compareTo(FinanceConstants.GOOD_SAVINGS_RATE_THRESHOLD) >= 0) {
             return FinanceHealthStatus.GOOD;
         }
         if (netBalance.compareTo(BigDecimal.ZERO) >= 0) {
@@ -655,11 +647,11 @@ public class FinanceUseCase implements FinanceInputPort {
                 ));
 
         return totalsByCategory.entrySet().stream()
-                .map(entry -> new ExpenseCategoryBreakdown(
-                        entry.getKey(),
-                        entry.getValue(),
-                        calculateExpensePercentage(entry.getValue(), totalExpenses)
-                ))
+                .map(entry -> ExpenseCategoryBreakdown.builder()
+                        .category(entry.getKey())
+                        .totalAmount(entry.getValue())
+                        .percentage(calculateExpensePercentage(entry.getValue(), totalExpenses))
+                        .build())
                 .sorted(Comparator
                         .comparing(ExpenseCategoryBreakdown::totalAmount, Comparator.reverseOrder())
                         .thenComparing(breakdown -> breakdown.category().name()))
@@ -677,11 +669,11 @@ public class FinanceUseCase implements FinanceInputPort {
                 ));
 
         return totalsByCategory.entrySet().stream()
-                .map(entry -> new FinanceCategoryStatistic(
-                        entry.getKey(),
-                        entry.getValue(),
-                        calculateExpensePercentage(entry.getValue(), totalExpenses)
-                ))
+                .map(entry -> FinanceCategoryStatistic.builder()
+                        .category(entry.getKey())
+                        .amount(entry.getValue())
+                        .percentage(calculateExpensePercentage(entry.getValue(), totalExpenses))
+                        .build())
                 .sorted(Comparator
                         .comparing(FinanceCategoryStatistic::amount, Comparator.reverseOrder())
                         .thenComparing(statistic -> statistic.category().name()))
@@ -693,7 +685,7 @@ public class FinanceUseCase implements FinanceInputPort {
             return BigDecimal.ZERO;
         }
         return categoryTotal
-                .multiply(BigDecimal.valueOf(100))
+                .multiply(FinanceConstants.MAX_PERCENTAGE)
                 .divide(totalExpenses, 2, RoundingMode.HALF_UP);
     }
 }

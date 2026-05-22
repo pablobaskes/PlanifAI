@@ -1,4 +1,4 @@
-package com.planifai.core.finance.domain.model;
+package com.planifai.core.finance.domain.model.recurring;
 
 public enum ObligationPaymentStatus {
     PENDING,

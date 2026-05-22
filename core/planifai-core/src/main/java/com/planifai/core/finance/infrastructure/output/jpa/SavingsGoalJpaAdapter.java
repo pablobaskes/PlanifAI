@@ -1,30 +1,24 @@
 package com.planifai.core.finance.infrastructure.output.jpa;
 
 import com.planifai.core.finance.application.ports.output.SavingsGoalOutputPort;
-import com.planifai.core.finance.domain.model.SavingsGoal;
-import com.planifai.core.finance.domain.model.SavingsGoalCategory;
-import com.planifai.core.finance.domain.model.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.SavingsGoalEntity;
 import com.planifai.core.finance.infrastructure.output.jpa.mapper.SavingsGoalJpaMapper;
 import com.planifai.core.finance.infrastructure.output.jpa.repository.SavingsGoalJpaRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Optional;
 
 @Component
+@RequiredArgsConstructor
 public class SavingsGoalJpaAdapter implements SavingsGoalOutputPort {
 
     private final SavingsGoalJpaRepository savingsGoalJpaRepository;
     private final SavingsGoalJpaMapper savingsGoalJpaMapper;
-
-    public SavingsGoalJpaAdapter(
-            SavingsGoalJpaRepository savingsGoalJpaRepository,
-            SavingsGoalJpaMapper savingsGoalJpaMapper
-    ) {
-        this.savingsGoalJpaRepository = savingsGoalJpaRepository;
-        this.savingsGoalJpaMapper = savingsGoalJpaMapper;
-    }
 
     @Override
     public List<SavingsGoal> findAll() {

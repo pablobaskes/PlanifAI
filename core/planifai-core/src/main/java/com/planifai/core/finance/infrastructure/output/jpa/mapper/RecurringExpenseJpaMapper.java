@@ -1,6 +1,6 @@
 package com.planifai.core.finance.infrastructure.output.jpa.mapper;
 
-import com.planifai.core.finance.domain.model.RecurringExpense;
+import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.RecurringExpenseEntity;
 import org.mapstruct.Mapper;
 

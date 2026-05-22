@@ -1,6 +1,6 @@
 package com.planifai.core.finance.infrastructure.output.jpa.converter;
 
-import com.planifai.core.finance.domain.model.ExpenseCategory;
+import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

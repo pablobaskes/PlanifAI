@@ -2,22 +2,21 @@ package com.planifai.core.tasks.application.usecase;
 
 import com.planifai.core.tasks.application.ports.input.TaskInputPort;
 import com.planifai.core.tasks.application.ports.output.TaskOutputPort;
+import com.planifai.core.tasks.domain.TaskConstants;
 import com.planifai.core.tasks.domain.model.Task;
 import com.planifai.core.tasks.domain.model.TaskPriority;
 import com.planifai.core.tasks.domain.model.TaskStatus;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class TaskUseCase implements TaskInputPort {
 
     private final TaskOutputPort taskOutputPort;
-
-    public TaskUseCase(TaskOutputPort taskOutputPort) {
-        this.taskOutputPort = taskOutputPort;
-    }
 
     @Override
     public List<Task> getTasks() {
@@ -42,10 +41,10 @@ public class TaskUseCase implements TaskInputPort {
 
     private void validate(Task task) {
         if (task == null) {
-            throw new IllegalArgumentException("Task is required.");
+            throw new IllegalArgumentException(TaskConstants.TASK_REQUIRED);
         }
         if (task.getTitle() == null || task.getTitle().isBlank()) {
-            throw new IllegalArgumentException("Task title is required.");
+            throw new IllegalArgumentException(TaskConstants.TASK_TITLE_REQUIRED);
         }
     }
 }

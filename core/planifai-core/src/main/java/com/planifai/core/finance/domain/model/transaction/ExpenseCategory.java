@@ -1,4 +1,4 @@
-package com.planifai.core.finance.domain.model;
+package com.planifai.core.finance.domain.model.transaction;
 
 public enum ExpenseCategory {
     FOOD,

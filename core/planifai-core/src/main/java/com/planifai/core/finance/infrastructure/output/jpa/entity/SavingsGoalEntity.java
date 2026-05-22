@@ -1,7 +1,7 @@
 package com.planifai.core.finance.infrastructure.output.jpa.entity;
 
-import com.planifai.core.finance.domain.model.SavingsGoalCategory;
-import com.planifai.core.finance.domain.model.SavingsGoalStatus;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
+import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,6 +11,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,6 +21,9 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "finance_savings_goals")
+@Getter
+@Setter
+@NoArgsConstructor
 public class SavingsGoalEntity {
 
     @Id
@@ -48,85 +54,5 @@ public class SavingsGoalEntity {
         if (createdAt == null) {
             createdAt = OffsetDateTime.now();
         }
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public BigDecimal getTargetAmount() {
-        return targetAmount;
-    }
-
-    public void setTargetAmount(BigDecimal targetAmount) {
-        this.targetAmount = targetAmount;
-    }
-
-    public BigDecimal getCurrentAmount() {
-        return currentAmount;
-    }
-
-    public void setCurrentAmount(BigDecimal currentAmount) {
-        this.currentAmount = currentAmount;
-    }
-
-    public LocalDate getTargetDate() {
-        return targetDate;
-    }
-
-    public void setTargetDate(LocalDate targetDate) {
-        this.targetDate = targetDate;
-    }
-
-    public SavingsGoalCategory getCategory() {
-        return category;
-    }
-
-    public void setCategory(SavingsGoalCategory category) {
-        this.category = category;
-    }
-
-    public SavingsGoalStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(SavingsGoalStatus status) {
-        this.status = status;
-    }
-
-    public BigDecimal getMonthlySavingRate() {
-        return monthlySavingRate;
-    }
-
-    public void setMonthlySavingRate(BigDecimal monthlySavingRate) {
-        this.monthlySavingRate = monthlySavingRate;
-    }
-
-    public String getNotes() {
-        return notes;
-    }
-
-    public void setNotes(String notes) {
-        this.notes = notes;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(OffsetDateTime createdAt) {
-        this.createdAt = createdAt;
     }
 }

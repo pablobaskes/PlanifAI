@@ -1,6 +1,6 @@
 package com.planifai.core.finance.infrastructure.output.jpa.mapper;
 
-import com.planifai.core.finance.domain.model.SavingsGoal;
+import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.infrastructure.output.jpa.entity.SavingsGoalEntity;
 import org.mapstruct.Mapper;
 
