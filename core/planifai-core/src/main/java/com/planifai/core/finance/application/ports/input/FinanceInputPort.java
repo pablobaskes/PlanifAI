@@ -2,8 +2,10 @@ package com.planifai.core.finance.application.ports.input;
 
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
 import com.planifai.core.finance.domain.model.transaction.Income;
 import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
@@ -12,6 +14,7 @@ import com.planifai.core.finance.domain.model.budget.BudgetSummary;
 import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
 
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -30,6 +33,10 @@ public interface FinanceInputPort {
     Income createIncome(Income income);
 
     FinanceDashboard getDashboard(YearMonth month);
+
+    FinancialTimeline getFinancialTimeline(LocalDate from, LocalDate to);
+
+    Cashflow getCashflow(YearMonth from, YearMonth to);
 
     FinanceCategoryStatistics getCategoryStatistics(YearMonth month);
 

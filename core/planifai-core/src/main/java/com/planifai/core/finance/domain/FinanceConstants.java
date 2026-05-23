@@ -11,6 +11,10 @@ public final class FinanceConstants {
     public static final int MAX_PAYMENT_DAY = 31;
 
     public static final String DASHBOARD_MONTH_REQUIRED = "Dashboard month is required.";
+    public static final String TIMELINE_RANGE_REQUIRED = "Timeline from and to dates are required.";
+    public static final String TIMELINE_RANGE_INVALID = "Timeline from date cannot be after to date.";
+    public static final String CASHFLOW_RANGE_REQUIRED = "Cashflow from and to months are required.";
+    public static final String CASHFLOW_RANGE_INVALID = "Cashflow to month cannot be before from month.";
     public static final String CATEGORY_STATISTICS_MONTH_REQUIRED = "Category statistics month is required.";
     public static final String OBLIGATIONS_SUMMARY_MONTH_REQUIRED = "Obligations summary month is required.";
     public static final String INVALID_MONTH = "Invalid month.";

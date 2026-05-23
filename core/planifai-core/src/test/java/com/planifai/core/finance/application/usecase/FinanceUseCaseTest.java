@@ -9,6 +9,7 @@ import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.budget.BudgetAlertType;
 import com.planifai.core.finance.domain.model.budget.BudgetStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetSummary;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
@@ -23,6 +24,9 @@ import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalCategory;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalStatus;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventStatus;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventType;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -759,6 +763,192 @@ class FinanceUseCaseTest {
         assertTrue(summary.categories().get(0).alerts().isEmpty());
     }
 
+    @Test
+    void getFinancialTimelineIncludesRealIncomesRealExpensesAndProjectedRecurringExpenses() {
+        incomeOutputPort.incomes.add(income(1L, "Salary", "3000.00", LocalDate.of(2026, 5, 10)));
+        expenseOutputPort.expenses.add(expense(2L, "Groceries", "150.00", LocalDate.of(2026, 5, 5), ExpenseCategory.FOOD));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                3L,
+                "Rent",
+                "900.00",
+                ExpenseCategory.HOUSING,
+                RecurringExpenseRecurrence.MONTHLY,
+                1,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        FinancialTimeline timeline = financeUseCase.getFinancialTimeline(
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31)
+        );
+
+        assertEquals(3, timeline.events().size());
+        assertEquals(FinancialTimelineEventType.RECURRING_EXPENSE, timeline.events().get(0).type());
+        assertEquals(LocalDate.of(2026, 5, 1), timeline.events().get(0).date());
+        assertEquals(true, timeline.events().get(0).projected());
+        assertEquals(FinancialTimelineEventStatus.PROJECTED, timeline.events().get(0).status());
+        assertBigDecimal("-900.00", timeline.events().get(0).amount());
+        assertEquals(FinancialTimelineEventType.EXPENSE, timeline.events().get(1).type());
+        assertEquals(false, timeline.events().get(1).projected());
+        assertEquals(FinancialTimelineEventStatus.POSTED, timeline.events().get(1).status());
+        assertBigDecimal("-150.00", timeline.events().get(1).amount());
+        assertEquals(FinancialTimelineEventType.INCOME, timeline.events().get(2).type());
+        assertEquals(false, timeline.events().get(2).projected());
+        assertEquals(FinancialTimelineEventStatus.POSTED, timeline.events().get(2).status());
+        assertBigDecimal("3000.00", timeline.events().get(2).amount());
+    }
+
+    @Test
+    void getFinancialTimelineProjectsMonthlyRecurringExpensesInsideRange() {
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Subscription",
+                "20.00",
+                ExpenseCategory.SUBSCRIPTIONS,
+                RecurringExpenseRecurrence.MONTHLY,
+                31,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        FinancialTimeline timeline = financeUseCase.getFinancialTimeline(
+                LocalDate.of(2026, 2, 1),
+                LocalDate.of(2026, 3, 31)
+        );
+
+        assertEquals(2, timeline.events().size());
+        assertEquals(LocalDate.of(2026, 2, 28), timeline.events().get(0).date());
+        assertEquals(LocalDate.of(2026, 3, 31), timeline.events().get(1).date());
+        assertTrue(timeline.events().stream().allMatch(event -> event.projected()));
+    }
+
+    @Test
+    void getFinancialTimelineReturnsEmptyEventsForEmptyRange() {
+        FinancialTimeline timeline = financeUseCase.getFinancialTimeline(
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31)
+        );
+
+        assertTrue(timeline.events().isEmpty());
+    }
+
+    @Test
+    void getFinancialTimelineRejectsInvalidRange() {
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.getFinancialTimeline(
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 5, 31)
+        ));
+    }
+
+    @Test
+    void getCashflowCalculatesMonthlyIncomeExpensesAndSavingsRate() {
+        incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
+        expenseOutputPort.expenses.add(expense("Groceries", "1000.00", LocalDate.of(2026, 5, 2), ExpenseCategory.FOOD));
+
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 5));
+
+        assertEquals(1, cashflow.months().size());
+        assertBigDecimal("3000.00", cashflow.months().get(0).expectedIncome());
+        assertBigDecimal("1000.00", cashflow.months().get(0).expectedExpenses());
+        assertBigDecimal("2000.00", cashflow.months().get(0).netCashflow());
+        assertBigDecimal("2000.00", cashflow.months().get(0).projectedBalance());
+        assertBigDecimal("2000.00", cashflow.months().get(0).savingsAmount());
+        assertBigDecimal("66.67", cashflow.months().get(0).savingsRate());
+    }
+
+    @Test
+    void getCashflowIncludesProjectedRecurringExpensesNotAlreadyRegistered() {
+        incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
+        expenseOutputPort.expenses.add(expense("Groceries", "500.00", LocalDate.of(2026, 5, 2), ExpenseCategory.FOOD));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Rent",
+                "1000.00",
+                ExpenseCategory.HOUSING,
+                RecurringExpenseRecurrence.MONTHLY,
+                5,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 5));
+
+        assertBigDecimal("1500.00", cashflow.months().get(0).expectedExpenses());
+        assertBigDecimal("1500.00", cashflow.months().get(0).netCashflow());
+    }
+
+    @Test
+    void getCashflowDoesNotDoubleCountRegisteredRecurringExpenses() {
+        incomeOutputPort.incomes.add(income("3000.00", LocalDate.of(2026, 5, 1)));
+        expenseOutputPort.expenses.add(expense("Rent", "1000.00", LocalDate.of(2026, 5, 2), ExpenseCategory.HOUSING));
+        recurringExpenseOutputPort.recurringExpenses.add(recurringExpense(
+                1L,
+                "Rent",
+                "1000.00",
+                ExpenseCategory.HOUSING,
+                RecurringExpenseRecurrence.MONTHLY,
+                5,
+                LocalDate.of(2026, 1, 1),
+                null,
+                true
+        ));
+
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 5));
+
+        assertBigDecimal("1000.00", cashflow.months().get(0).expectedExpenses());
+        assertBigDecimal("2000.00", cashflow.months().get(0).netCashflow());
+    }
+
+    @Test
+    void getCashflowReturnsSafeValuesForMonthsWithoutData() {
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 5));
+
+        assertBigDecimal("0", cashflow.months().get(0).expectedIncome());
+        assertBigDecimal("0", cashflow.months().get(0).expectedExpenses());
+        assertBigDecimal("0", cashflow.months().get(0).netCashflow());
+        assertBigDecimal("0", cashflow.months().get(0).projectedBalance());
+        assertBigDecimal("0", cashflow.months().get(0).savingsAmount());
+        assertBigDecimal("0", cashflow.months().get(0).savingsRate());
+    }
+
+    @Test
+    void getCashflowCalculatesProjectedBalanceCumulatively() {
+        incomeOutputPort.incomes.add(income("100.00", LocalDate.of(2026, 5, 1)));
+        incomeOutputPort.incomes.add(income("50.00", LocalDate.of(2026, 6, 1)));
+        expenseOutputPort.expenses.add(expense("June expense", "100.00", LocalDate.of(2026, 6, 2), ExpenseCategory.OTHER));
+
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 6));
+
+        assertEquals(2, cashflow.months().size());
+        assertBigDecimal("100.00", cashflow.months().get(0).projectedBalance());
+        assertBigDecimal("50.00", cashflow.months().get(1).projectedBalance());
+    }
+
+    @Test
+    void getCashflowUsesZeroSavingsRateWhenIncomeIsZero() {
+        expenseOutputPort.expenses.add(expense("Bill", "100.00", LocalDate.of(2026, 5, 2), ExpenseCategory.UTILITIES));
+
+        Cashflow cashflow = financeUseCase.getCashflow(YearMonth.of(2026, 5), YearMonth.of(2026, 5));
+
+        assertBigDecimal("0", cashflow.months().get(0).expectedIncome());
+        assertBigDecimal("100.00", cashflow.months().get(0).expectedExpenses());
+        assertBigDecimal("-100.00", cashflow.months().get(0).netCashflow());
+        assertBigDecimal("0", cashflow.months().get(0).savingsAmount());
+        assertBigDecimal("0", cashflow.months().get(0).savingsRate());
+    }
+
+    @Test
+    void getCashflowRejectsInvalidRange() {
+        assertThrows(IllegalArgumentException.class, () -> financeUseCase.getCashflow(
+                YearMonth.of(2026, 6),
+                YearMonth.of(2026, 5)
+        ));
+    }
+
     private Income income(String amount, LocalDate date) {
         return Income.builder()
                 .amount(new BigDecimal(amount))
@@ -766,8 +956,27 @@ class FinanceUseCaseTest {
                 .build();
     }
 
+    private Income income(Long id, String source, String amount, LocalDate date) {
+        return Income.builder()
+                .id(id)
+                .source(source)
+                .amount(new BigDecimal(amount))
+                .incomeDate(date)
+                .build();
+    }
+
     private Expense expense(String amount, LocalDate date, ExpenseCategory category) {
         return expense(null, amount, date, category);
+    }
+
+    private Expense expense(Long id, String concept, String amount, LocalDate date, ExpenseCategory category) {
+        return Expense.builder()
+                .id(id)
+                .concept(concept)
+                .amount(new BigDecimal(amount))
+                .expenseDate(date)
+                .category(category)
+                .build();
     }
 
     private Expense expense(String concept, String amount, LocalDate date, ExpenseCategory category) {

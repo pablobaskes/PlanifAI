@@ -15,12 +15,18 @@ import com.planifai.core.finance.domain.model.budget.BudgetAlertType;
 import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetSummary;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
+import com.planifai.core.finance.domain.model.cashflow.CashflowMonth;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistic;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.dashboard.FinanceHealthStatus;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEvent;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventStatus;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventType;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.transaction.Income;
 import com.planifai.core.finance.domain.model.transaction.IncomeCategory;
@@ -39,6 +45,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -126,6 +133,58 @@ public class FinanceUseCase implements FinanceInputPort {
                 .savingsRate(savingsRate)
                 .healthStatus(healthStatus)
                 .expensesByCategory(buildExpenseBreakdown(expenses, totalExpenses))
+                .build();
+    }
+
+    @Override
+    public FinancialTimeline getFinancialTimeline(LocalDate from, LocalDate to) {
+        validateTimelineRange(from, to);
+
+        List<FinancialTimelineEvent> events = new ArrayList<>();
+        incomeOutputPort.findByIncomeDateBetween(from, to).stream()
+                .map(this::toIncomeTimelineEvent)
+                .forEach(events::add);
+        expenseOutputPort.findByExpenseDateBetween(from, to).stream()
+                .map(this::toExpenseTimelineEvent)
+                .forEach(events::add);
+        recurringExpenseOutputPort.findActiveWithinPeriod(from, to).stream()
+                .flatMap(recurringExpense -> projectRecurringExpenseTimelineEvents(recurringExpense, from, to).stream())
+                .forEach(events::add);
+
+        List<FinancialTimelineEvent> sortedEvents = events.stream()
+                .sorted(Comparator
+                        .comparing(FinancialTimelineEvent::date)
+                        .thenComparing(event -> event.type().name())
+                        .thenComparing(FinancialTimelineEvent::label)
+                        .thenComparing(FinancialTimelineEvent::id))
+                .toList();
+
+        return FinancialTimeline.builder()
+                .from(from)
+                .to(to)
+                .events(sortedEvents)
+                .build();
+    }
+
+    @Override
+    public Cashflow getCashflow(YearMonth from, YearMonth to) {
+        validateCashflowRange(from, to);
+
+        YearMonth currentMonth = from;
+        BigDecimal projectedBalance = BigDecimal.ZERO;
+        List<CashflowMonth> months = new ArrayList<>();
+
+        while (!currentMonth.isAfter(to)) {
+            CashflowMonth cashflowMonth = calculateCashflowMonth(currentMonth, projectedBalance);
+            months.add(cashflowMonth);
+            projectedBalance = cashflowMonth.projectedBalance();
+            currentMonth = currentMonth.plusMonths(1);
+        }
+
+        return Cashflow.builder()
+                .from(from)
+                .to(to)
+                .months(months)
                 .build();
     }
 
@@ -503,6 +562,24 @@ public class FinanceUseCase implements FinanceInputPort {
         budget.validate();
     }
 
+    private void validateTimelineRange(LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException(FinanceConstants.TIMELINE_RANGE_REQUIRED);
+        }
+        if (from.isAfter(to)) {
+            throw new IllegalArgumentException(FinanceConstants.TIMELINE_RANGE_INVALID);
+        }
+    }
+
+    private void validateCashflowRange(YearMonth from, YearMonth to) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException(FinanceConstants.CASHFLOW_RANGE_REQUIRED);
+        }
+        if (to.isBefore(from)) {
+            throw new IllegalArgumentException(FinanceConstants.CASHFLOW_RANGE_INVALID);
+        }
+    }
+
     private void applyBudgetDefaults(Budget budget) {
         if (budget.getActive() == null) {
             budget.setActive(Boolean.TRUE);
@@ -769,6 +846,120 @@ public class FinanceUseCase implements FinanceInputPort {
             return month.getMonthValue() == recurringExpense.getStartDate().getMonthValue();
         }
         return recurringExpense.getRecurrence() == RecurringExpenseRecurrence.MONTHLY;
+    }
+
+    private FinancialTimelineEvent toIncomeTimelineEvent(Income income) {
+        return FinancialTimelineEvent.builder()
+                .id("income-" + income.getId())
+                .date(income.getIncomeDate())
+                .type(FinancialTimelineEventType.INCOME)
+                .label(income.getSource())
+                .amount(income.getAmount() != null ? income.getAmount() : BigDecimal.ZERO)
+                .category(null)
+                .source("income")
+                .projected(false)
+                .status(FinancialTimelineEventStatus.POSTED)
+                .build();
+    }
+
+    private FinancialTimelineEvent toExpenseTimelineEvent(Expense expense) {
+        BigDecimal amount = expense.getAmount() != null ? expense.getAmount().negate() : BigDecimal.ZERO;
+        return FinancialTimelineEvent.builder()
+                .id("expense-" + expense.getId())
+                .date(expense.getExpenseDate())
+                .type(FinancialTimelineEventType.EXPENSE)
+                .label(expense.getConcept())
+                .amount(amount)
+                .category(expense.getCategory())
+                .source("expense")
+                .projected(false)
+                .status(FinancialTimelineEventStatus.POSTED)
+                .build();
+    }
+
+    private List<FinancialTimelineEvent> projectRecurringExpenseTimelineEvents(
+            RecurringExpense recurringExpense,
+            LocalDate from,
+            LocalDate to
+    ) {
+        YearMonth currentMonth = YearMonth.from(from);
+        YearMonth endMonth = YearMonth.from(to);
+        List<FinancialTimelineEvent> events = new ArrayList<>();
+
+        while (!currentMonth.isAfter(endMonth)) {
+            if (appliesToMonth(recurringExpense, currentMonth)) {
+                LocalDate dueDate = projectedDueDate(recurringExpense, currentMonth);
+                if (!dueDate.isBefore(from) && !dueDate.isAfter(to)) {
+                    events.add(toRecurringExpenseTimelineEvent(recurringExpense, dueDate));
+                }
+            }
+            currentMonth = currentMonth.plusMonths(1);
+        }
+
+        return events;
+    }
+
+    private CashflowMonth calculateCashflowMonth(YearMonth month, BigDecimal previousProjectedBalance) {
+        LocalDate periodStart = month.atDay(1);
+        LocalDate periodEnd = month.atEndOfMonth();
+        List<Income> incomes = incomeOutputPort.findByIncomeDateBetween(periodStart, periodEnd);
+        List<Expense> expenses = expenseOutputPort.findByExpenseDateBetween(periodStart, periodEnd);
+        List<RecurringExpense> recurringExpenses = recurringExpenseOutputPort
+                .findActiveWithinPeriod(periodStart, periodEnd).stream()
+                .filter(recurringExpense -> appliesToMonth(recurringExpense, month))
+                .toList();
+
+        BigDecimal expectedIncome = sumIncomes(incomes);
+        BigDecimal realExpenses = sumExpenses(expenses);
+        BigDecimal projectedRecurringExpenses = sumProjectedRecurringExpensesNotRegistered(
+                recurringExpenses,
+                expenses
+        );
+        BigDecimal expectedExpenses = realExpenses.add(projectedRecurringExpenses);
+        BigDecimal netCashflow = expectedIncome.subtract(expectedExpenses);
+        BigDecimal projectedBalance = previousProjectedBalance.add(netCashflow);
+        BigDecimal savingsAmount = netCashflow.compareTo(BigDecimal.ZERO) > 0 ? netCashflow : BigDecimal.ZERO;
+
+        return CashflowMonth.builder()
+                .month(month)
+                .expectedIncome(expectedIncome)
+                .expectedExpenses(expectedExpenses)
+                .projectedBalance(projectedBalance)
+                .netCashflow(netCashflow)
+                .savingsAmount(savingsAmount)
+                .savingsRate(calculateSavingsRate(savingsAmount, expectedIncome))
+                .build();
+    }
+
+    private BigDecimal sumProjectedRecurringExpensesNotRegistered(
+            List<RecurringExpense> recurringExpenses,
+            List<Expense> registeredExpenses
+    ) {
+        return recurringExpenses.stream()
+                .filter(recurringExpense -> !isRegisteredExpensePresent(recurringExpense, registeredExpenses))
+                .map(RecurringExpense::getAmount)
+                .filter(amount -> amount != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private FinancialTimelineEvent toRecurringExpenseTimelineEvent(
+            RecurringExpense recurringExpense,
+            LocalDate dueDate
+    ) {
+        BigDecimal amount = recurringExpense.getAmount() != null
+                ? recurringExpense.getAmount().negate()
+                : BigDecimal.ZERO;
+        return FinancialTimelineEvent.builder()
+                .id("recurring-expense-" + recurringExpense.getId() + "-" + dueDate)
+                .date(dueDate)
+                .type(FinancialTimelineEventType.RECURRING_EXPENSE)
+                .label(recurringExpense.getName())
+                .amount(amount)
+                .category(recurringExpense.getCategory())
+                .source("recurring-expense")
+                .projected(true)
+                .status(FinancialTimelineEventStatus.PROJECTED)
+                .build();
     }
 
     private UpcomingPayment toUpcomingPayment(

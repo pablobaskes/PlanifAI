@@ -4,12 +4,14 @@ import com.planifai.core.api.FinanceApi;
 import com.planifai.core.dto.BudgetRequest;
 import com.planifai.core.dto.BudgetResponse;
 import com.planifai.core.dto.BudgetSummaryResponse;
+import com.planifai.core.dto.CashflowResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
 import com.planifai.core.dto.FinanceCategoryResponse;
 import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
+import com.planifai.core.dto.FinancialTimelineResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
@@ -21,7 +23,9 @@ import com.planifai.core.dto.SavingsGoalSummaryResponse;
 import com.planifai.core.finance.application.ports.input.FinanceInputPort;
 import com.planifai.core.finance.domain.FinanceConstants;
 import com.planifai.core.finance.domain.model.budget.Budget;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
 import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
 import com.planifai.core.finance.domain.model.transaction.Expense;
@@ -33,6 +37,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Arrays;
 import java.util.List;
@@ -80,6 +85,18 @@ public class FinanceRestAdapter implements FinanceApi {
     public ResponseEntity<FinanceDashboardResponse> getFinanceDashboard(String month) {
         FinanceDashboard dashboard = financeInputPort.getDashboard(parseMonth(month));
         return ResponseEntity.ok(financeRestMapper.toResponse(dashboard));
+    }
+
+    @Override
+    public ResponseEntity<FinancialTimelineResponse> getFinanceTimeline(LocalDate from, LocalDate to) {
+        FinancialTimeline timeline = financeInputPort.getFinancialTimeline(from, to);
+        return ResponseEntity.ok(financeRestMapper.toResponse(timeline));
+    }
+
+    @Override
+    public ResponseEntity<CashflowResponse> getFinanceCashflow(String from, String to) {
+        Cashflow cashflow = financeInputPort.getCashflow(parseMonth(from), parseMonth(to));
+        return ResponseEntity.ok(financeRestMapper.toResponse(cashflow));
     }
 
     @Override

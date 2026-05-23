@@ -3,6 +3,7 @@ package com.planifai.core.finance.infrastructure.input.rest;
 import com.planifai.core.dto.BudgetRequest;
 import com.planifai.core.dto.BudgetResponse;
 import com.planifai.core.dto.BudgetSummaryResponse;
+import com.planifai.core.dto.CashflowResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -10,6 +11,7 @@ import com.planifai.core.dto.FinanceCategoryResponse;
 import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
+import com.planifai.core.dto.FinancialTimelineResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
@@ -26,6 +28,8 @@ import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetSummary;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
+import com.planifai.core.finance.domain.model.cashflow.CashflowMonth;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
@@ -36,6 +40,10 @@ import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummar
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
 import com.planifai.core.finance.domain.model.goal.SavingsGoal;
 import com.planifai.core.finance.domain.model.goal.SavingsGoalsSummary;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEvent;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventStatus;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEventType;
 import com.planifai.core.finance.infrastructure.input.rest.mapper.FinanceRestMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -170,6 +178,51 @@ class FinanceRestAdapterTest {
     }
 
     @Test
+    void getFinanceTimelinePassesDateRangeAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<FinancialTimelineResponse> response = adapter.getFinanceTimeline(
+                LocalDate.of(2026, 5, 1),
+                LocalDate.of(2026, 5, 31)
+        );
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(LocalDate.of(2026, 5, 1), financeInputPort.requestedFromDate);
+        assertEquals(LocalDate.of(2026, 5, 31), financeInputPort.requestedToDate);
+        assertEquals(LocalDate.of(2026, 5, 1), response.getBody().getFrom());
+        assertEquals(LocalDate.of(2026, 5, 31), response.getBody().getTo());
+        assertEquals(com.planifai.core.dto.FinancialTimelineEventType.INCOME, response.getBody().getEvents().get(0).getType());
+        assertEquals(false, response.getBody().getEvents().get(0).getProjected());
+        assertEquals(com.planifai.core.dto.FinancialTimelineEventStatus.POSTED, response.getBody().getEvents().get(0).getStatus());
+    }
+
+    @Test
+    void getFinanceCashflowParsesMonthRangeAndReturnsResponse() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        ResponseEntity<CashflowResponse> response = adapter.getFinanceCashflow("2026-05", "2026-06");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals(YearMonth.of(2026, 5), financeInputPort.requestedFromMonth);
+        assertEquals(YearMonth.of(2026, 6), financeInputPort.requestedToMonth);
+        assertEquals("2026-05", response.getBody().getFrom());
+        assertEquals("2026-06", response.getBody().getTo());
+        assertEquals("2026-05", response.getBody().getMonths().get(0).getMonth());
+        assertEquals(1000.0, response.getBody().getMonths().get(0).getExpectedIncome());
+        assertEquals(600.0, response.getBody().getMonths().get(0).getExpectedExpenses());
+    }
+
+    @Test
+    void getFinanceCashflowPropagatesInvalidMonthForGlobalHandler() {
+        FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
+        FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
+
+        assertThrows(IllegalArgumentException.class, () -> adapter.getFinanceCashflow("2026-13", "2026-06"));
+    }
+
+    @Test
     void getFinanceBudgetsParsesMonthAndReturnsResponse() {
         FakeFinanceInputPort financeInputPort = new FakeFinanceInputPort();
         FinanceRestAdapter adapter = new FinanceRestAdapter(financeInputPort, new TestFinanceRestMapper());
@@ -275,6 +328,10 @@ class FinanceRestAdapterTest {
     private static final class FakeFinanceInputPort implements FinanceInputPort {
 
         private YearMonth requestedMonth;
+        private LocalDate requestedFromDate;
+        private LocalDate requestedToDate;
+        private YearMonth requestedFromMonth;
+        private YearMonth requestedToMonth;
         private ExpenseCategory requestedCategory;
         private boolean rejectSavingsGoalCreate;
         private Long deletedSavingsGoalId;
@@ -323,6 +380,46 @@ class FinanceRestAdapterTest {
                     .savingsRate(new BigDecimal("10.00"))
                     .healthStatus(FinanceHealthStatus.WARNING)
                     .expensesByCategory(List.of())
+                    .build();
+        }
+
+        @Override
+        public FinancialTimeline getFinancialTimeline(LocalDate from, LocalDate to) {
+            this.requestedFromDate = from;
+            this.requestedToDate = to;
+            return FinancialTimeline.builder()
+                    .from(from)
+                    .to(to)
+                    .events(List.of(FinancialTimelineEvent.builder()
+                            .id("income-1")
+                            .date(from)
+                            .type(FinancialTimelineEventType.INCOME)
+                            .label("Salary")
+                            .amount(new BigDecimal("1000.00"))
+                            .category(null)
+                            .source("income")
+                            .projected(false)
+                            .status(FinancialTimelineEventStatus.POSTED)
+                            .build()))
+                    .build();
+        }
+
+        @Override
+        public Cashflow getCashflow(YearMonth from, YearMonth to) {
+            this.requestedFromMonth = from;
+            this.requestedToMonth = to;
+            return Cashflow.builder()
+                    .from(from)
+                    .to(to)
+                    .months(List.of(CashflowMonth.builder()
+                            .month(from)
+                            .expectedIncome(new BigDecimal("1000.00"))
+                            .expectedExpenses(new BigDecimal("600.00"))
+                            .projectedBalance(new BigDecimal("400.00"))
+                            .netCashflow(new BigDecimal("400.00"))
+                            .savingsAmount(new BigDecimal("400.00"))
+                            .savingsRate(new BigDecimal("40.00"))
+                            .build()))
                     .build();
         }
 

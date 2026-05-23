@@ -3,6 +3,7 @@ package com.planifai.core.finance.infrastructure.input.rest.mapper;
 import com.planifai.core.dto.BudgetRequest;
 import com.planifai.core.dto.BudgetResponse;
 import com.planifai.core.dto.BudgetSummaryResponse;
+import com.planifai.core.dto.CashflowResponse;
 import com.planifai.core.dto.ExpenseRequest;
 import com.planifai.core.dto.ExpenseResponse;
 import com.planifai.core.dto.FinanceCategory;
@@ -10,6 +11,7 @@ import com.planifai.core.dto.FinanceCategoryStatisticItem;
 import com.planifai.core.dto.FinanceCategoryStatisticsResponse;
 import com.planifai.core.dto.FinanceDashboardResponse;
 import com.planifai.core.dto.FinancialHealthStatus;
+import com.planifai.core.dto.FinancialTimelineResponse;
 import com.planifai.core.dto.IncomeRequest;
 import com.planifai.core.dto.IncomeResponse;
 import com.planifai.core.dto.MonthlyObligationsSummaryResponse;
@@ -24,12 +26,16 @@ import com.planifai.core.finance.domain.model.budget.Budget;
 import com.planifai.core.finance.domain.model.budget.BudgetAlert;
 import com.planifai.core.finance.domain.model.budget.BudgetCategoryStatus;
 import com.planifai.core.finance.domain.model.budget.BudgetSummary;
+import com.planifai.core.finance.domain.model.cashflow.Cashflow;
+import com.planifai.core.finance.domain.model.cashflow.CashflowMonth;
 import com.planifai.core.finance.domain.model.dashboard.ExpenseCategoryBreakdown;
 import com.planifai.core.finance.domain.model.transaction.Expense;
 import com.planifai.core.finance.domain.model.transaction.ExpenseCategory;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistic;
 import com.planifai.core.finance.domain.model.dashboard.FinanceCategoryStatistics;
 import com.planifai.core.finance.domain.model.dashboard.FinanceDashboard;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimeline;
+import com.planifai.core.finance.domain.model.timeline.FinancialTimelineEvent;
 import com.planifai.core.finance.domain.model.transaction.Income;
 import com.planifai.core.finance.domain.model.recurring.MonthlyObligationsSummary;
 import com.planifai.core.finance.domain.model.recurring.RecurringExpense;
@@ -264,6 +270,48 @@ public interface FinanceRestMapper {
                 .expensesByCategory(dashboard.expensesByCategory().stream()
                         .map(this::toResponse)
                         .toList());
+    }
+
+    default FinancialTimelineResponse toResponse(FinancialTimeline timeline) {
+        return new FinancialTimelineResponse()
+                .from(timeline.from())
+                .to(timeline.to())
+                .events(timeline.events().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default com.planifai.core.dto.FinancialTimelineEvent toResponse(FinancialTimelineEvent event) {
+        return new com.planifai.core.dto.FinancialTimelineEvent()
+                .id(event.id())
+                .date(event.date())
+                .type(com.planifai.core.dto.FinancialTimelineEventType.valueOf(event.type().name()))
+                .label(event.label())
+                .amount(toDouble(event.amount()))
+                .category(toResponse(event.category()))
+                .source(event.source())
+                .projected(event.projected())
+                .status(com.planifai.core.dto.FinancialTimelineEventStatus.valueOf(event.status().name()));
+    }
+
+    default CashflowResponse toResponse(Cashflow cashflow) {
+        return new CashflowResponse()
+                .from(cashflow.from().toString())
+                .to(cashflow.to().toString())
+                .months(cashflow.months().stream()
+                        .map(this::toResponse)
+                        .toList());
+    }
+
+    default com.planifai.core.dto.CashflowMonth toResponse(CashflowMonth month) {
+        return new com.planifai.core.dto.CashflowMonth()
+                .month(month.month().toString())
+                .expectedIncome(toDouble(month.expectedIncome()))
+                .expectedExpenses(toDouble(month.expectedExpenses()))
+                .projectedBalance(toDouble(month.projectedBalance()))
+                .netCashflow(toDouble(month.netCashflow()))
+                .savingsAmount(toDouble(month.savingsAmount()))
+                .savingsRate(toDouble(month.savingsRate()));
     }
 
     default FinanceCategoryStatisticsResponse toResponse(FinanceCategoryStatistics statistics) {
